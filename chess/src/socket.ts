@@ -1,0 +1,19 @@
+import type { Server } from "socket.io";
+import { GameManager } from "./game.js";
+
+const game = new GameManager();
+
+export const init = (io : Server)=>{
+    io.on("connection", (socket) => {
+        console.log(socket.id);
+        socket.on("create-room", ()=>{
+            game.createRoom(socket);
+        });
+        socket.on("join-room", ({roomId} : {roomId : string})=>{
+            game.joinRoom(socket, roomId);
+        });
+    });
+}
+
+
+
