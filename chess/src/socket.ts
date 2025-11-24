@@ -11,7 +11,7 @@ export const init = (io : Server)=>{
         });
         socket.on("join-room", ({roomId} : {roomId : string})=>{
             game.joinRoom(socket, roomId);
-        });
+        }); 
     });
 }
 
