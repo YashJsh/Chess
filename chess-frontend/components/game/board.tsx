@@ -4,12 +4,15 @@ import { useEffect, useState } from "react";
 import { Piece, Squares } from "./square"
 import { Chess, Square } from "chess.js"
 import { useGameStore } from "@/store/gameStore";
+import { useAuthStore } from "@/store/useAuthStore";
 
 export const ChessBoard = () => {
     const { chess, board, setBoard, setSelected, selected, makeMove, resetSelected, setLegalMoves, legalMoves, setHistory } = useGameStore();
+    const { connectSocket } = useAuthStore();
 
     useEffect(() => {
         setBoard();
+        connectSocket()
     }, [])
 
     if (board == null) {
@@ -73,13 +76,15 @@ export const ChessBoard = () => {
     }
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen">
-            <div className="p-10 bg-primary/40 rounded-2xl">
-                <div className="shadow-2xl">
+        <div className="flex flex-col items-center justify-center min-h-screen w-full px-4 py-8">
+        {/* Board container with responsive sizing */}
+        <div className="w-full max-w-[95vmin] sm:max-w-[90vmin] md:max-w-[85vmin] lg:max-w-[700px] xl:max-w-[800px] aspect-square">
+            <div className="w-full h-full p-4 sm:p-6 md:p-8 lg:p-10 bg-primary/40 rounded-xl sm:rounded-2xl">
+                <div className="w-full h-full shadow-2xl rounded-lg overflow-hidden">
                     {board.map((row, rowIndex) => {
                         return (
-                            <div key={rowIndex} className="flex">
-                                {row.map((square, colIndex) => {
+                            <div key={rowIndex} className="flex w-full h-[12.5%]">
+                            {row.map((square, colIndex) => {
 
                                     const isLight = (rowIndex + colIndex) % 2 === 0;
 
@@ -112,6 +117,7 @@ export const ChessBoard = () => {
                 </div>
             </div>
 
+        </div>
         </div>
     )
 

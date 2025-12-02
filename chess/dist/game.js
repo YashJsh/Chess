@@ -19,7 +19,7 @@ export class GameManager {
         this.rooms.set(roomId, room);
         socket.emit("room-created", {
             room: roomId,
-            Player_id: socket.id,
+            player_id: socket.id,
             message: "Room Created Successfully"
         });
         console.log("Room created:", roomId);
@@ -153,14 +153,24 @@ export class GameManager {
         const chess = this.games.get(roomId);
         console.log("Chess State ");
         console.log(chess?.fen());
-        if (chess?.isCheckmate()) {
-            socket.to(roomId).emit("Game-over", {
-                winner: chess.turn(),
-                message: "game over"
-            });
-            return;
+        if (chess?.isGameOver()) {
+            if (chess?.isCheckmate()) {
+                console.log("Checkmate");
+                socket.to(roomId).emit("Game-over", {
+                    winner: chess.turn(),
+                    message: "Checkmate"
+                });
+                return;
+            }
+            else if (chess?.isInsufficientMaterial() || chess?.isStalemate()) {
+                console.log("Match draw");
+                socket.to(roomId).emit("draw", {
+                    message: "Match draw"
+                });
+                console.log("Match draw");
+                return;
+            }
         }
-        console.log(chess?.isCheckmate());
     }
     isCheck(roomId) {
         const chess = this.games.get(roomId);

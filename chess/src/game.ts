@@ -40,7 +40,7 @@ export class GameManager {
 
         socket.emit("room-created", {
             room: roomId,
-            Player_id: socket.id,
+            player_id: socket.id,
             message: "Room Created Successfully"
         });
 
@@ -81,11 +81,11 @@ export class GameManager {
 
         socket.emit("room-joined", {
             room: roomId,
-            Player_id: socket.id,
+            player_id: socket.id,
             message: "Room Joined Successfully"
         });
         this.game(roomId);
-    }
+    };
 
     public game(roomId: string) {
         const chess = new Chess();
@@ -191,26 +191,29 @@ export class GameManager {
 
     public gameState(roomId: string, socket: Socket) {
         const chess = this.games.get(roomId);
+        const room = this.rooms.get(roomId);
         console.log("Chess State ");
         console.log(chess?.fen());
-        if (chess?.isGameOver()){
+        if (chess?.isGameOver()) {
             if (chess?.isCheckmate()) {
                 console.log("Checkmate")
-            socket.to(roomId).emit("Game-over", {
-                winner: chess.turn(),
-                message: "Checkmate"
-            });
-            return;
-        }else if (chess?.isInsufficientMaterial() || chess?.isStalemate()){
-            console.log("Match draw");
-            socket.to(roomId).emit("draw", {
-                message: "Match draw"
-            })
-            console.log("Match draw");
-            return;
+                room?.players.forEach(p => {
+                    p.socket.emit("Game-over", {
+                        winner: chess.turn() === "w" ? "Black" : "White", // Winner is opposite of current turn
+                        message: "Checkmate"
+                    });
+                })
+                return;
+            } else if (chess?.isInsufficientMaterial() || chess?.isStalemate()) {
+                console.log("Match draw");
+                socket.to(roomId).emit("draw", {
+                    message: "Match draw"
+                })
+                console.log("Match draw");
+                return;
+            }
         }
-        }
-        
+
     }
 
     private isCheck(roomId: string) {

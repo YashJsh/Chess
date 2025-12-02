@@ -9,6 +9,11 @@ export const init = (io) => {
         socket.on("join-room", ({ roomId }) => {
             game.joinRoom(socket, roomId);
         });
+        socket.on("disconnect", () => {
+            io.emit("Player disconnected", () => {
+                playerId: socket.id;
+            });
+        });
     });
 };
 //# sourceMappingURL=socket.js.map

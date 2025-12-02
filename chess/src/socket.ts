@@ -9,9 +9,11 @@ export const init = (io : Server)=>{
         socket.on("create-room", ()=>{
             game.createRoom(socket);
         });
+
         socket.on("join-room", ({roomId} : {roomId : string})=>{
             game.joinRoom(socket, roomId);
         }); 
+
         socket.on("disconnect", ()=>{
             io.emit("Player disconnected", ()=>{
                 playerId : socket.id
