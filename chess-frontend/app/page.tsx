@@ -1,12 +1,20 @@
 "use client"
 
 import { Button } from "@/components/ui/button";
+import { useAuthStore } from "@/store/useAuthStore";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 
 export default function Home() {
   const router = useRouter();
+  const { connectSocket } = useAuthStore();
+  
+  useEffect(()=>{
+    connectSocket()
+  },[])
+
   return (
     <div className="w-screen h-screen flex items-center justify-center">
       <div className = "text-center flex flex-col items-center gap-3">
@@ -18,3 +26,4 @@ export default function Home() {
     </div>
   );
 }
+ 

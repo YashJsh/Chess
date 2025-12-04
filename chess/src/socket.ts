@@ -11,14 +11,20 @@ export const init = (io : Server)=>{
         });
 
         socket.on("join-room", ({roomId} : {roomId : string})=>{
+            console.log("roomid is : ", roomId);
             game.joinRoom(socket, roomId);
         }); 
+
+        socket.on("player-ready", ()=>{
+            console.log("playerReady : ", socket.id);
+            game.playerReady(socket);
+        });
 
         socket.on("disconnect", ()=>{
             io.emit("Player disconnected", ()=>{
                 playerId : socket.id
             })
-        })
+        });
     });
 }
 

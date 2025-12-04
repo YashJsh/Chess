@@ -10,7 +10,7 @@ interface GameState {
     capturedPieces : Piece[],
 
     playerColor: "White" | "Black" | null;
-    currentTurn : "w" | "b"
+    currentTurn : "w" | "b" | null;
 
     selected : string | null,
     setSelected : (sq : string | null) => void;
@@ -27,7 +27,7 @@ interface GameState {
     makeMove : (from : string, to : string) => boolean;
 
     joinRoom : (roomId : string)=> void;
-    createRoom : (roomId : string) => void;
+    createRoom : () => void;
 
     roomId : string | null;
     playerId : string | null;
@@ -49,35 +49,47 @@ export const useGameStore = create<GameState>((set, get)=>({
     roomId : null,
     playerId : null,
     playerColor : "White",
-    currentTurn : "w",
+    currentTurn : null,
     gameStatus : "waiting",
 
 
     createRoom : () => {
         const socket = useAuthStore.getState().socket;
         if(socket === null) return;
-        socket?.emit("create-room");
-        socket.on("room-created", (data : room_response)=>{
-            set({roomId : data.room, playerId : data.player_id})
-            console.log(data.message);
-        });
+        socket.emit("create-room");
     },
 
     joinRoom : (roomId : string)=>{
         const socket = useAuthStore.getState().socket;
         if (!socket) return;
-        socket.emit("join-room", roomId);
-        socket.on("room-joined", (data : room_response) => {
-            set({roomId : data.room, playerId : data.player_id});
-        });
+        socket.emit("join-room", {roomId});
     },
 
     initializeGameListeners : ()=>{
         const socket = useAuthStore.getState().socket;
-        if (!socket) return;
+
+        if (!socket) {
+            console.log("Socket is not present");
+            return;
+        };
+        
+        console.log("✅ Initializing game listeners on socket:", socket.id);
+
+        socket.on("room-created", (data : room_response)=>{
+            console.log("ROOM CREATED RESPONSE");
+            set({roomId : data.room, playerId : data.player_id})
+            console.log(data.message);
+        });
+
+        socket.on("room-joined", (data : room_response) => {
+            set({roomId : data.room, playerId : data.player_id});
+            console.log(data.message);
+        });
+
 
         //Game started : 
         socket.on("game-started", (data : game_started)=>{
+            console.log("Game-started event");
             const chess = new Chess(data.board);
             set({
                 chess,
@@ -179,6 +191,7 @@ export const useGameStore = create<GameState>((set, get)=>({
             board : e.chess.board()
         }))
     },
+
     setSelected : (sq) => {
         const chess = get().chess;
         const playerColor = get().playerColor;
@@ -190,6 +203,7 @@ export const useGameStore = create<GameState>((set, get)=>({
             console.log("Not your turn");
             return;
         }
+
         if (sq){
             const piece = chess.get(sq as Square);
             //Only if its your piece
@@ -222,6 +236,7 @@ export const useGameStore = create<GameState>((set, get)=>({
     },
 
     makeMove : (from, to) => {
+        console.log("ON make move");
         const chess = get().chess;
         const capturedPieces = get().capturedPieces;
         const socket = useAuthStore.getState().socket;
@@ -230,6 +245,7 @@ export const useGameStore = create<GameState>((set, get)=>({
 
                 
         try {
+            console.log("Player color " , playerColor);
             const isPlayerTurn = 
             (playerColor === "White" && currentTurn === "w") ||
             (playerColor === "Black" && currentTurn === "b");
@@ -248,22 +264,10 @@ export const useGameStore = create<GameState>((set, get)=>({
             const optimistic_board = new Chess(chess.fen());
             optimistic_board.move({from, to});
 
-            const captured = optimistic_board.get(to as Square);
-            
-            let newCapturedPiece = [...capturedPieces];
-            if (captured){
-                const pieceNotation = captured.color === "w" 
-                 ? captured.type.toUpperCase()
-                 : captured.type.toLowerCase()
-
-                newCapturedPiece.push(pieceNotation as Piece)
-            }
-
             set({
                 board : optimistic_board.board(),
                 selected : null,
                 legalMoves : [],
-                capturedPieces : newCapturedPiece
             })
             return true;
         } catch (error) {

@@ -14,23 +14,20 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Plus, Copy, Check } from "lucide-react"
 import Image from "next/image"
+import { useGameStore } from "@/store/gameStore"
 
 export const Room = ({ roomType, description }: { roomType: string, description: string }) => {
     const router = useRouter();
-    const [roomId, setRoomId] = useState("");
-    const [generatedRoomId, setGeneratedRoomId] = useState("");
+    const [roomIds, setRoomId] = useState("");
+    const {createRoom, joinRoom, roomId} = useGameStore();
     const [copied, setCopied] = useState(false);
 
-    const generateRoomId = () => {
-        const id = Math.random().toString(36).substring(2, 9);
-        setGeneratedRoomId(id);
-    };
-
     const copyRoomId = () => {
-        navigator.clipboard.writeText(generatedRoomId);
+        navigator.clipboard.writeText(roomId!);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
+    console.log("roomId is :", roomId);
 
     return (
         <Card className="w-full rounded-2xl">
@@ -50,19 +47,23 @@ export const Room = ({ roomType, description }: { roomType: string, description:
                 <CardDescription>{description}</CardDescription>
             </CardHeader>
             <CardContent>
+
                 {/* JOIN ROOM UI */}
                 {roomType === "Join-room" && (
                     <div className="flex flex-col gap-3">
                         <Input
                             className="rounded-xl w-full"
                             placeholder="Enter room id"
-                            value={roomId}
+                            value={roomIds}
                             onChange={(e) => setRoomId(e.target.value)}
                         />
 
                         <Button
                             className="rounded-xl w-full"
-                            onClick={() => router.push(`/game/${roomId}`)}
+                            onClick={()=>{
+                                joinRoom(roomIds);
+                                router.push(`/game/${roomIds}`)
+                            }}
                         >
                             Join Room
                         </Button>
@@ -71,12 +72,12 @@ export const Room = ({ roomType, description }: { roomType: string, description:
 
                 {/* CREATE ROOM UI */}
                 {roomType === "Create-room" && (
-                    !generatedRoomId ? (
+                    !roomId ? (
                         <Button
-                            onClick={generateRoomId}
+                            onClick={()=>{createRoom()}}
                             className="w-full"
                             size="lg"
-                            variant={"default"}
+                            variant={"default"} 
                         >
                             <Plus className="mr-2 h-5 w-5" />
                             Create New Room
@@ -87,12 +88,18 @@ export const Room = ({ roomType, description }: { roomType: string, description:
                                 <p className="text-sm text-muted-foreground mb-2">Your Room ID</p>
                                 <div className="flex items-center justify-between">
                                     <code className="text-xl font-mono font-bold text-foreground">
-                                        {generatedRoomId}
+                                        {roomId}
                                     </code>
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={copyRoomId}
+                                        onClick={()=>{
+                                            copyRoomId
+                                            setTimeout(()=>{
+                                                router.push(`/game/${roomId}`)
+                                            }, 1000)
+
+                                        }}
                                         className="hover:bg-primary/10"
                                     >
                                         {copied ? (

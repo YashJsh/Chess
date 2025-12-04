@@ -7,7 +7,12 @@ export const init = (io) => {
             game.createRoom(socket);
         });
         socket.on("join-room", ({ roomId }) => {
+            console.log("roomid is : ", roomId);
             game.joinRoom(socket, roomId);
+        });
+        socket.on("player-ready", () => {
+            console.log("playerReady : ", socket.id);
+            game.playerReady(socket);
         });
         socket.on("disconnect", () => {
             io.emit("Player disconnected", () => {

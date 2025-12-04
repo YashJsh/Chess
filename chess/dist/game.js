@@ -14,7 +14,8 @@ export class GameManager {
         const room = {
             id: roomId,
             players: [player],
-            moveHistory: []
+            moveHistory: [],
+            playerReadyCount: 0
         };
         this.rooms.set(roomId, room);
         socket.emit("room-created", {
@@ -54,11 +55,26 @@ export class GameManager {
         room.players.push(player);
         socket.emit("room-joined", {
             room: roomId,
-            Player_id: socket.id,
+            player_id: socket.id,
             message: "Room Joined Successfully"
         });
-        this.game(roomId);
     }
+    ;
+    playerReady(socket) {
+        const room = this.rooms.values().find(r => r.players.some(p => p.id === socket.id));
+        if (!room) {
+            console.log("Room is not present");
+            return;
+        }
+        room.playerReadyCount++;
+        console.log("Player ready:", socket.id, "Ready count:", room.playerReadyCount);
+        console.log("player ready count : ");
+        if (room.playerReadyCount === 2) {
+            console.log("Starting game now");
+            this.game(room.id); // 👈 START THE GAME
+        }
+    }
+    ;
     game(roomId) {
         const chess = new Chess();
         this.games.set(roomId, chess);
@@ -151,14 +167,17 @@ export class GameManager {
     }
     gameState(roomId, socket) {
         const chess = this.games.get(roomId);
+        const room = this.rooms.get(roomId);
         console.log("Chess State ");
         console.log(chess?.fen());
         if (chess?.isGameOver()) {
             if (chess?.isCheckmate()) {
                 console.log("Checkmate");
-                socket.to(roomId).emit("Game-over", {
-                    winner: chess.turn(),
-                    message: "Checkmate"
+                room?.players.forEach(p => {
+                    p.socket.emit("Game-over", {
+                        winner: chess.turn() === "w" ? "Black" : "White", // Winner is opposite of current turn
+                        message: "Checkmate"
+                    });
                 });
                 return;
             }

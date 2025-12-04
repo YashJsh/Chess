@@ -12,6 +12,7 @@ interface Room {
     id: string;
     players: Player[];
     moveHistory: { from: string, to: string, fen: string, by: string }[];
+    playerReadyCount : number;
 }
 
 
@@ -33,7 +34,8 @@ export class GameManager {
         const room = {
             id: roomId,
             players: [player],
-            moveHistory: []
+            moveHistory: [],
+            playerReadyCount : 0
         }
 
         this.rooms.set(roomId, room);
@@ -84,14 +86,30 @@ export class GameManager {
             player_id: socket.id,
             message: "Room Joined Successfully"
         });
-        this.game(roomId);
+    };  
+
+    public playerReady(socket : Socket){
+        const room = this.rooms.values().find(r => r.players.some(p => p.id === socket.id))
+        if (!room){
+            console.log("Room is not present");
+            return;
+        }
+        room.playerReadyCount++;
+        console.log("Player ready:", socket.id, "Ready count:", room.playerReadyCount);
+        console.log("player ready count : ", )
+
+        if (room.playerReadyCount === 2) {
+            console.log("Starting game now");
+            this.game(room.id);   // 👈 START THE GAME
+        }
     };
 
     public game(roomId: string) {
         const chess = new Chess();
         this.games.set(roomId, chess);
         const room = this.rooms.get(roomId)!;
-
+        
+        
         room.players.forEach((p) => {
             p.socket.emit("game-started", {
                 color: p.color,

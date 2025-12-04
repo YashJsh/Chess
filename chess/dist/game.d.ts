@@ -4,6 +4,7 @@ export declare class GameManager {
     private games;
     createRoom(socket: Socket): void;
     joinRoom(socket: Socket, roomId: string): void;
+    playerReady(socket: Socket): void;
     game(roomId: string): void;
     private registerMove;
     gameState(roomId: string, socket: Socket): void;

@@ -3,11 +3,15 @@
 import { ChessBoard } from '@/components/game/board'
 import { Captured } from '@/components/game/captured'
 import { Moves } from '@/components/game/history'
+import { useGameConnect } from '@/hooks/use-game-connection'
 import { useGameStore } from '@/store/gameStore'
+import { useAuthStore } from '@/store/useAuthStore'
 import React from 'react'
 
 const ChessGame = () => {
-  const { history } = useGameStore();
+  const { currentTurn } = useGameStore();
+
+
 
   return (
     <div className="grid grid-cols-3 h-screen w-screen">
@@ -21,12 +25,13 @@ const ChessGame = () => {
         <div className="px-6 py-4 bg-primary rounded-xl text-white">
           <h2 className="text-xl font-bold tracking-wide">Game Analysis</h2>
           <p className="text-xs mt-1">Track moves & captures</p>
+          <p className="text-xs mt-1">{currentTurn}</p>
         </div>
         <div className='flex-1 min-h-0'>
-          <Moves/>
+          <Moves />
         </div>
         <div className='mt-auto'>
-          <Captured/>
+          <Captured />
         </div>
       </div>
     </div>

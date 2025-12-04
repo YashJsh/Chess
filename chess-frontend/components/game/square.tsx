@@ -34,9 +34,9 @@ export const Squares = ({ piece, isLight, row, col, onClick, isLegal, isCheck }:
                     <Image
                         src={pieces_map[piece]}
                         alt={piece}
-                        width={60}
-                        height={60}
-                        className="w-[80%] h-[80%] object-contain"
+                        width={40}
+                        height={40}
+                        className="w-[90%] h-[90%] object-contain"
                     />
                 )}
             </div>
