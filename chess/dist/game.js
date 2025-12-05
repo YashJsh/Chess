@@ -121,20 +121,21 @@ export class GameManager {
                 return;
             }
             try {
-                chess.move({ from, to });
+                const result = chess.move({ from, to });
+                const san = result.san;
+                room?.moveHistory?.push({
+                    san,
+                    fen: chess.fen(),
+                    by: player.color
+                });
                 console.log("Making Move now......");
                 room?.players.forEach(p => {
                     p.socket.emit("move-played", {
                         board: chess.fen(),
                         lastMove: { from, to },
                         turn: chess.turn(),
+                        moveHistory: room.moveHistory,
                     });
-                });
-                room?.moveHistory?.push({
-                    from: from,
-                    to: to,
-                    fen: chess.fen(),
-                    by: player.color
                 });
                 console.log("..............");
                 console.log(chess.fen());

@@ -11,7 +11,7 @@ export const Moves = ()=>{
             Black : history[i+1],
         })
     };      
-
+    console.log("History is : ", history);
     return (
         <div className="flex-1 overflow-y-auto px-6 py-4 bg-white">
           <div className="flex items-center justify-between mb-4">

@@ -15,6 +15,7 @@ export interface move_played{
     board: string;
     lastMove: { from: string; to: string };
     turn: string;
+    moveHistory: { san : string, fen: string, by: string }[];
 }
 
 export interface invalid_move{

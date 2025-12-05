@@ -123,7 +123,7 @@ export const useGameStore = create<GameState>((set, get)=>({
                 currentTurn : data.turn as "w" | "b",
                 selected : null,
                 legalMoves : [],
-                history : newChess.history(),
+                history : data.moveHistory.map(s => s.san),
                 capturedPieces : newCapturedPieces,
                 gameStatus : newChess.isCheck() ? "check" : "playing"
             });
