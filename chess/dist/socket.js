@@ -10,9 +10,12 @@ export const init = (io) => {
             console.log("roomid is : ", roomId);
             game.joinRoom(socket, roomId);
         });
-        socket.on("player-ready", () => {
+        socket.on("player-ready", ({ playerId }) => {
             console.log("playerReady : ", socket.id);
-            game.playerReady(socket);
+            game.playerReady(socket, playerId);
+        });
+        socket.on("reconnect-game", ({ roomId, playerId }) => {
+            game.reconnectPlayer(socket, roomId, playerId);
         });
         socket.on("disconnect", () => {
             io.emit("Player disconnected", () => {

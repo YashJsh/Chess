@@ -17,7 +17,8 @@ export const ChessBoard = () => {
         resetSelected, 
         setLegalMoves, 
         legalMoves,
-        playerColor 
+        playerColor,
+        checkSquare
     } = useGameStore();
 
     useEffect(() => {
@@ -85,16 +86,17 @@ export const ChessBoard = () => {
     const displayBoard = isFlipped ? [...board].reverse() : board;
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen w-full px-4 py-8">
+        <div className="flex flex-col items-center justify-center  w-full px-4 py-8 ">
             <div className="w-full max-w-[95vmin] sm:max-w-[90vmin] md:max-w-[85vmin] lg:max-w-[700px] xl:max-w-[800px] aspect-square">
                 <div className="w-full h-full p-4 sm:p-6 md:p-8 lg:p-10 bg-primary/40 rounded-xl sm:rounded-2xl">
                     <div className="relative w-full h-full">
                         {/* Main board with shadow */}
-                        <div className="w-full h-full shadow-2xl rounded-lg overflow-hidden">
+                        <div className="w-full h-full shadow-2xl rounded-lg overflow-hidden ">
                             {displayBoard.map((row, rowIndex) => {
                                 const actualRowIndex = isFlipped ? (7 - rowIndex) : rowIndex;
                                 const displayRow = isFlipped ? [...row].reverse() : row;
                                 
+
                                 return (
                                     <div key={actualRowIndex} className="flex w-full h-[12.5%] relative">
                                         {displayRow.map((square, colIndex) => {
@@ -110,7 +112,7 @@ export const ChessBoard = () => {
                                             const squareName = sqToNum(actualRowIndex, actualColIndex);
                                             const isLegal = legalMoves.includes(squareName);
                                             const isSelectedSquare = selected === squareName;
-
+                                            const isCheckSquare = squareName === checkSquare;
                                             return (
                                                 <div key={`${actualRowIndex}-${actualColIndex}`} className="relative w-[12.5%] h-full">
                                                     <Squares
@@ -121,6 +123,7 @@ export const ChessBoard = () => {
                                                         onClick={() => handleSquareClick(actualRowIndex, actualColIndex)}
                                                         isLegal={isLegal}
                                                         isCheck={chess.isCheck()}
+                                                        isCheckSquare = {isCheckSquare}
                                                     />
                                                     
                                                     {/* File labels (a-h) on bottom row */}

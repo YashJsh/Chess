@@ -4,9 +4,9 @@ import { pieces_map } from "../constants/pieces";
 
 export type Piece = keyof typeof pieces_map | "";
 
-export const Squares = ({ piece, isLight, row, col, onClick, isLegal, isCheck }: { piece: Piece, isLight: boolean, isLegal: boolean, isCheck: boolean, row: number, col: number, onClick: () => void }) => {
+export const Squares = ({ piece, isLight, row, col, onClick, isLegal, isCheck, isCheckSquare }: { piece: Piece, isLight: boolean, isLegal: boolean, isCheck: boolean, row: number, col: number, onClick: () => void, isCheckSquare : boolean }) => {
     const bgColor = isLight ? "bg-white" : "bg-primary";
-    
+
     
     return (
             <div
@@ -28,6 +28,13 @@ export const Squares = ({ piece, isLight, row, col, onClick, isLegal, isCheck }:
                 {/* CAPTURE DOT */}
                 {isLegal && piece !== "" && (
                     <div className="absolute w-5 h-5 md:w-6 md:h-6 rounded-full border-4 border-black/40"></div>
+                )}
+
+                {isCheckSquare && (
+                    <div className="absolute inset-0 pointer-events-none 
+                    bg-[radial-gradient(circle,rgba(255,0,0,0.6)_0%,rgba(255,0,0,0)_70%)] 
+                    ">
+                    </div>
                 )}
     
                 {piece !== "" && (

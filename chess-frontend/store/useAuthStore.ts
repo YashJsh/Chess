@@ -6,11 +6,13 @@ interface auth{
     socket : Socket | null,
     connectSocket : () => void,
     disconnectSocket : ()=> void,
+    isSocketConnected : boolean,
 }
 
 export const useAuthStore = create<auth>((set, get)=>({
     baseUrl :  "ws://localhost:3001",
     socket : null,
+    isSocketConnected : false,
 
     connectSocket : async ()=> {
         console.log("Connecting Socket");
@@ -29,10 +31,11 @@ export const useAuthStore = create<auth>((set, get)=>({
             reconnectionAttempts : 5,
         }); 
         await socketInstance.connect();
-        set({socket : socketInstance});
-
+        set({socket : socketInstance, isSocketConnected : true});
     },
     disconnectSocket: () => {
         if(get().socket?.connected) get().socket?.disconnect();
     },
+
+
 }))

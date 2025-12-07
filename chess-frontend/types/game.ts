@@ -28,3 +28,15 @@ export interface invalid_chance{
     message : string;
     turn : string;
 }
+
+export interface reconnected_game{
+    board: string,
+    color: "White" | "Black";
+    turn: string,
+    history: {
+        san : string,
+        fen : string,
+        by : string
+    }[],
+    message: string
+}

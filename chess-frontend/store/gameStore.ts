@@ -2,12 +2,14 @@ import { create } from "zustand";
 import { Chess, Square } from "chess.js";
 import { Piece } from "@/components/game/square";
 import { useAuthStore } from "./useAuthStore";
-import { game_started, invalid_chance, invalid_move, move_played, room_response } from "@/types/game";
+import { game_started, invalid_chance, invalid_move, move_played, reconnected_game, room_response } from "@/types/game";
+import { playCaptureSound, playMoveSound } from "@/lib/sound";
 
 interface GameState {
     chess : Chess,
     board : ReturnType<Chess['board']> | null,
     capturedPieces : Piece[],
+    checkSquare : string | null,
 
     playerColor: "White" | "Black" | null;
     currentTurn : "w" | "b" | null;
@@ -48,9 +50,10 @@ export const useGameStore = create<GameState>((set, get)=>({
     capturedPieces : [],
     roomId : null,
     playerId : null,
-    playerColor : "White",
+    playerColor : "White" as const,
     currentTurn : null,
-    gameStatus : "waiting",
+    gameStatus : "waiting" as const,
+    checkSquare : null,
 
 
     createRoom : () => {
@@ -78,11 +81,15 @@ export const useGameStore = create<GameState>((set, get)=>({
         socket.on("room-created", (data : room_response)=>{
             console.log("ROOM CREATED RESPONSE");
             set({roomId : data.room, playerId : data.player_id})
+            localStorage.setItem("playerId", data.player_id);
+            localStorage.setItem("roomId", data.room);
             console.log(data.message);
         });
 
         socket.on("room-joined", (data : room_response) => {
             set({roomId : data.room, playerId : data.player_id});
+            localStorage.setItem("playerId", data.player_id);
+            localStorage.setItem("roomId", data.room);
             console.log(data.message);
         });
 
@@ -106,6 +113,18 @@ export const useGameStore = create<GameState>((set, get)=>({
             const newChess = new Chess(data.board);
             const capturedPieces = get().capturedPieces;
 
+            let checksq = get().checkSquare;
+
+            if (newChess.isCheck()){
+                const turn = data.turn;
+                const kingPos = newChess.board().flat().find((sq)=>{
+                    return sq?.type === "k" && sq.color === turn
+                });
+                if (kingPos) checksq = kingPos.square;
+            }else{
+                checksq = null;
+            }
+
             const oldChess = get().chess;
             const captured = oldChess.get(data.lastMove.to as Square);
             let newCapturedPieces = [...capturedPieces]
@@ -115,6 +134,9 @@ export const useGameStore = create<GameState>((set, get)=>({
                     ? captured.type.toUpperCase()
                     : captured.type.toLowerCase();
                 newCapturedPieces.push(pieceNotation as Piece);
+                playCaptureSound();
+            }else{
+                playMoveSound();
             }
 
             set({
@@ -125,7 +147,8 @@ export const useGameStore = create<GameState>((set, get)=>({
                 legalMoves : [],
                 history : data.moveHistory.map(s => s.san),
                 capturedPieces : newCapturedPieces,
-                gameStatus : newChess.isCheck() ? "check" : "playing"
+                gameStatus : newChess.isCheck() ? "check" : "playing",
+                checkSquare : checksq
             });
         });
 
@@ -170,6 +193,22 @@ export const useGameStore = create<GameState>((set, get)=>({
         socket.on("error", (data: { code: string; message: string }) => {
             console.error("Room error:", data.message);
         });
+
+        socket.on("reconnected", (data : reconnected_game) => {
+            const restoredChess = new Chess(data.board);
+            
+            set({
+                chess: restoredChess,
+                board: restoredChess.board(),
+                playerColor: data.color,
+                currentTurn: data.turn as "w" | "b",
+                history: data.history.map(s => s.san),
+                gameStatus: restoredChess.isCheck() ? "check" : "playing",
+            });
+        
+            console.log("♻ Successfully restored game state.");
+        });
+        
 
     },
 

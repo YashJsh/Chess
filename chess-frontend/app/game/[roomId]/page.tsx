@@ -3,33 +3,56 @@
 import { ChessBoard } from '@/components/game/board'
 import { Captured } from '@/components/game/captured'
 import { Moves } from '@/components/game/history'
+import { Result } from '@/components/game/result'
 import { useGameConnect } from '@/hooks/use-game-connection'
-
+import { useGameStore } from '@/store/gameStore'
 
 const ChessGame = () => {
-
+  const { gameStatus } = useGameStore();
   useGameConnect();
 
   return (
-    <div className="grid grid-cols-3 h-screen w-screen">
-      {/* LEFT: chess board (2 columns) */}
-      <div className="col-span-2 flex items-center justify-center bg-gray-200">
+    <div
+      className="
+        w-screen h-screen 
+        flex flex-col
+        md:grid md:grid-cols-3
+      "
+    >
+      <div
+        className="
+          flex items-center justify-center
+          p-2
+          bg-transparent
+          md:col-span-2
+        "
+      >
         <ChessBoard />
       </div>
 
-      {/* RIGHT: moves panel (1 column) */}
-      <div className="col-span-1 bg-white p-4  shadow-lg flex flex-col ">
+      <div
+        className="
+          bg-white shadow-lg 
+          p-4 flex flex-col gap-4
+          md:col-span-1
+          md:h-screen
+          md:overflow-hidden
+        "
+      >
         <div className="px-6 py-4 bg-primary rounded-xl text-white">
           <h2 className="text-xl font-bold tracking-wide">Game Analysis</h2>
           <p className="text-xs mt-1">Track moves & captures</p>
         </div>
-        <div className='flex-1 min-h-0'>
+
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <Moves />
         </div>
-        <div className='mt-auto'>
+
+        <div className="mt-auto">
           <Captured />
         </div>
       </div>
+      <Result/>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import type { Socket } from "socket.io";
 import { v4 as uuidv4 } from "uuid";
 import { Chess } from "chess.js";
+import { uuid } from "uuidv4";
 
 interface Player {
     id: string,
@@ -26,7 +27,7 @@ export class GameManager {
         socket.join(roomId);
 
         const player: Player = {
-            id: socket.id,
+            id: uuidv4(),
             socket: socket,
             color: "White"
         }
@@ -42,16 +43,16 @@ export class GameManager {
 
         socket.emit("room-created", {
             room: roomId,
-            player_id: socket.id,
+            player_id: player.id,
             message: "Room Created Successfully"
         });
 
         console.log("Room created:", roomId);
         console.log("and socket Id is : ", socket.id);
+        console.log("Player Id is :", player.id);
     };
 
-    public joinRoom(socket: Socket, roomId: string) {
-        console.log("Player_id is : ", socket.id);
+    public joinRoom(socket: Socket, roomId: string){
         console.log("RoomID is : ", roomId);
 
         //Check if room exists;
@@ -73,7 +74,7 @@ export class GameManager {
         }
 
         const player: Player = {
-            id: socket.id,
+            id: uuidv4(),
             socket: socket,
             color: "Black"
         }
@@ -83,32 +84,31 @@ export class GameManager {
 
         socket.emit("room-joined", {
             room: roomId,
-            player_id: socket.id,
+            player_id: player.id,
             message: "Room Joined Successfully"
         });
     };  
 
-    public playerReady(socket : Socket){
-        const room = this.rooms.values().find(r => r.players.some(p => p.id === socket.id))
+    public playerReady(socket : Socket, playerId: string){
+        const room = this.rooms.values().find(r => r.players.some(p => p.id === playerId))
+
         if (!room){
             console.log("Room is not present");
             return;
         }
         room.playerReadyCount++;
-        console.log("Player ready:", socket.id, "Ready count:", room.playerReadyCount);
-        console.log("player ready count : ", )
-
+        console.log("Player ready with Id:", playerId, "Ready count:", room.playerReadyCount);
+        
         if (room.playerReadyCount === 2) {
             console.log("Starting game now");
-            this.game(room.id);   // 👈 START THE GAME
+            this.game(room.id, playerId);   // 👈 START THE GAME
         }
     };
 
-    public game(roomId: string) {
+    public game(roomId: string, playerId : string) {
         const chess = new Chess();
         this.games.set(roomId, chess);
         const room = this.rooms.get(roomId)!;
-        
         
         room.players.forEach((p) => {
             p.socket.emit("game-started", {
@@ -117,12 +117,12 @@ export class GameManager {
                 message: "game is started",
                 playertoMove: chess.turn()
             });
-            this.registerMove(roomId, p.socket);
+            this.registerMove(roomId, p.socket, playerId);
         });
         console.log("Game starting...... ");
     }
 
-    private registerMove(roomId: string, socket: Socket) {
+    private registerMove(roomId: string, socket: Socket, playerId : string) {
         const chess = this.games.get(roomId);
         const room = this.rooms.get(roomId);
 
@@ -140,7 +140,7 @@ export class GameManager {
             };
 
             //Check for the particular player;
-            const player = room?.players.find(p => p.id === socket.id);
+            const player = room?.players.find(p => p.id === playerId);
             if (!player) {
                 console.log("Player doesn't exist in this particular room");
                 return;
@@ -188,7 +188,6 @@ export class GameManager {
                     })
                     console.log("Check ongoing");
                 };
-
 
                 if (this.isDraw(roomId)) {
                     socket.to(roomId).emit("draw", {
@@ -245,5 +244,45 @@ export class GameManager {
     private isDraw(roomId: string) {
         const chess = this.games.get(roomId);
         return chess?.isDraw();
+    }
+
+    public reconnectPlayer(socket : Socket, roomId : string, playerId : string){
+        const room = this.rooms.get(roomId);
+        if (!room){
+            socket.emit("error", {message : "Room not found"});
+            return;
+        }
+        const player = room.players.find(p => p.id === playerId);
+        if (!player){
+            socket.emit("error", {
+                message : "Player not found"
+            })
+            return;
+        }
+
+        socket.join(roomId);
+        player.socket = socket;
+      
+        const chess = this.games.get(roomId);
+        
+        if (!chess){
+            socket.emit("game-not-found", {
+                message : "game not found"
+            })
+            console.log("Game is not present");
+            return;
+        }
+
+        console.log("🔁 Player reconnected:", playerId);
+        this.registerMove(roomId, socket, playerId);
+        
+        // send entire game snapshot
+        socket.emit("reconnected", {
+            board: chess.fen(),
+            color: player?.color,
+            turn: chess.turn(),
+            history: room.moveHistory,
+            message: "Reconnected successfully"
+        });
     }
 }
