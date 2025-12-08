@@ -7,7 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import {  Heading1, User } from "lucide-react";
+import { User } from "lucide-react";
 import { Button } from "../ui/button";
 
 export const Result = () => {

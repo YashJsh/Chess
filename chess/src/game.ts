@@ -1,6 +1,6 @@
 import type { Socket } from "socket.io";
 import { v4 as uuidv4 } from "uuid";
-import { Chess } from "chess.js";
+import { Chess, type Square } from "chess.js";
 import { uuid } from "uuidv4";
 
 interface Player {
@@ -14,6 +14,7 @@ interface Room {
     players: Player[];
     moveHistory: { san : string, fen: string, by: string }[];
     playerReadyCount : number;
+    capturedPieces : string[];
 }
 
 
@@ -36,7 +37,8 @@ export class GameManager {
             id: roomId,
             players: [player],
             moveHistory: [],
-            playerReadyCount : 0
+            playerReadyCount : 0,
+            capturedPieces : []
         }
 
         this.rooms.set(roomId, room);
@@ -127,7 +129,7 @@ export class GameManager {
         const room = this.rooms.get(roomId);
 
 
-        socket.on("move", ({ from, to }: { from: string, to: string }) => {
+        socket.on("move", ({ from, to, promotion }: { from: string, to: string, promotion? : string }) => {
             console.log("from", from);
             console.log("to", to);
             // Check whose move is that'
@@ -157,7 +159,31 @@ export class GameManager {
             }
 
             try {
-                const result = chess.move({ from, to });
+                const capturedPiece = chess.get(to as Square);
+
+                const piece = chess.get(from as Square);
+                const needPromotion = piece?.type === 'p' && 
+                    ((piece.color === 'w' && to[1] === '8') || 
+                    (piece.color === 'b' && to[1] === '1'));
+
+                if (needPromotion && !promotion){
+                    socket.emit("promotion-required", ({
+                        from, 
+                        to,
+                        message : "Please select a piece for promotion"
+                    }))
+                    return;
+                };
+
+                // Here, type is any cause, we will add promotion conditionally.
+                const moveOptions : any = {from, to}; 
+                if (promotion){
+                    moveOptions.promotion = promotion
+                }
+
+                //Here if promotion is there, then, we will add the promotion
+                //Else the normal, from and to will be there in moveOptions
+                const result = chess.move(moveOptions);
                 const san = result.san;
 
                 room?.moveHistory?.push({
@@ -165,7 +191,14 @@ export class GameManager {
                     fen: chess.fen(),
                     by: player.color
                 });
-                
+
+                if (capturedPiece){
+                    const pieceNotation = capturedPiece.color == "w"
+                        ? capturedPiece.type.toUpperCase()
+                        : capturedPiece.type.toLowerCase();
+                    room?.capturedPieces.push(pieceNotation);
+                }
+
                 console.log("Making Move now......")
                 room?.players.forEach(p => {
                     p.socket.emit("move-played", {
@@ -173,10 +206,10 @@ export class GameManager {
                         lastMove: { from, to },
                         turn: chess.turn(),
                         moveHistory: room.moveHistory,
+                        promotion : promotion,
+                        capturedPieces : room.capturedPieces
                     });
                 });
-
-                
 
                 console.log("..............");
                 console.log(chess.fen());
@@ -282,6 +315,7 @@ export class GameManager {
             color: player?.color,
             turn: chess.turn(),
             history: room.moveHistory,
+            capturedPieces : room.capturedPieces,
             message: "Reconnected successfully"
         });
     }

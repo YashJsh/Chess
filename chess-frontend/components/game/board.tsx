@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Piece, Squares } from "./square"
 import { Square } from "chess.js"
 import { useGameStore } from "@/store/gameStore";
+import { PromotionModal } from "./promotion";
 
 
 export const ChessBoard = () => {
@@ -18,7 +19,9 @@ export const ChessBoard = () => {
         setLegalMoves, 
         legalMoves,
         playerColor,
-        checkSquare
+        checkSquare,
+        handlePromotion,
+        showPromotionModal
     } = useGameStore();
 
     useEffect(() => {
@@ -151,6 +154,11 @@ export const ChessBoard = () => {
                     </div>
                 </div>
             </div>
+            <PromotionModal
+                isOpen = {showPromotionModal}
+                playerColor={playerColor as "White" | "Black"}
+                onSelect={handlePromotion}
+            />
         </div>
     );
 };

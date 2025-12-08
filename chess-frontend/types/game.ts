@@ -16,6 +16,8 @@ export interface move_played{
     lastMove: { from: string; to: string };
     turn: string;
     moveHistory: { san : string, fen: string, by: string }[];
+    capturedPieces : string[],
+    promotion : string;
 }
 
 export interface invalid_move{
@@ -38,5 +40,6 @@ export interface reconnected_game{
         fen : string,
         by : string
     }[],
-    message: string
+    message: string,
+    capturedPieces : string[]
 }

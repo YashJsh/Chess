@@ -16,7 +16,8 @@ export class GameManager {
             id: roomId,
             players: [player],
             moveHistory: [],
-            playerReadyCount: 0
+            playerReadyCount: 0,
+            capturedPieces: []
         };
         this.rooms.set(roomId, room);
         socket.emit("room-created", {
@@ -93,7 +94,7 @@ export class GameManager {
     registerMove(roomId, socket, playerId) {
         const chess = this.games.get(roomId);
         const room = this.rooms.get(roomId);
-        socket.on("move", ({ from, to }) => {
+        socket.on("move", ({ from, to, promotion }) => {
             console.log("from", from);
             console.log("to", to);
             // Check whose move is that'
@@ -121,13 +122,40 @@ export class GameManager {
                 return;
             }
             try {
-                const result = chess.move({ from, to });
+                const capturedPiece = chess.get(to);
+                const piece = chess.get(from);
+                const needPromotion = piece?.type === 'p' &&
+                    ((piece.color === 'w' && to[1] === '8') ||
+                        (piece.color === 'b' && to[1] === '1'));
+                if (needPromotion && !promotion) {
+                    socket.emit("promotion-required", ({
+                        from,
+                        to,
+                        message: "Please select a piece for promotion"
+                    }));
+                    return;
+                }
+                ;
+                // Here, type is any cause, we will add promotion conditionally.
+                const moveOptions = { from, to };
+                if (promotion) {
+                    moveOptions.promotion = promotion;
+                }
+                //Here if promotion is there, then, we will add the promotion
+                //Else the normal, from and to will be there in moveOptions
+                const result = chess.move(moveOptions);
                 const san = result.san;
                 room?.moveHistory?.push({
                     san,
                     fen: chess.fen(),
                     by: player.color
                 });
+                if (capturedPiece) {
+                    const pieceNotation = capturedPiece.color == "w"
+                        ? capturedPiece.type.toUpperCase()
+                        : capturedPiece.type.toLowerCase();
+                    room?.capturedPieces.push(pieceNotation);
+                }
                 console.log("Making Move now......");
                 room?.players.forEach(p => {
                     p.socket.emit("move-played", {
@@ -135,6 +163,8 @@ export class GameManager {
                         lastMove: { from, to },
                         turn: chess.turn(),
                         moveHistory: room.moveHistory,
+                        promotion: promotion,
+                        capturedPieces: room.capturedPieces
                     });
                 });
                 console.log("..............");
@@ -231,6 +261,7 @@ export class GameManager {
             color: player?.color,
             turn: chess.turn(),
             history: room.moveHistory,
+            capturedPieces: room.capturedPieces,
             message: "Reconnected successfully"
         });
     }
