@@ -5,13 +5,14 @@ import { Captured } from '@/components/game/captured'
 import { Moves } from '@/components/game/history'
 import { Result } from '@/components/game/result'
 import { useGameConnect } from '@/hooks/use-game-connection'
-import { useGameStore } from '@/store/gameStore'
+import { GameRouteGuard } from '@/middleware/gameroute'
+
 
 const ChessGame = () => {
-  const { gameStatus } = useGameStore();
   useGameConnect();
 
   return (
+    <GameRouteGuard>
     <div
       className="
         w-screen h-screen 
@@ -54,6 +55,7 @@ const ChessGame = () => {
       </div>
       <Result/>
     </div>
+    </GameRouteGuard>
   )
 }
 

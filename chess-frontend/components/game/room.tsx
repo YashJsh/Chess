@@ -12,27 +12,25 @@ import {
 
 import { Input } from "../ui/input"
 import { Button } from "../ui/button"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Plus } from "lucide-react"
 import Image from "next/image"
 import { useGameStore } from "@/store/gameStore"
 import { WaitingModal } from "./waiting"
+import { useAuthStore } from "@/store/useAuthStore"
 
 
 export const Room = ({ roomType, description }: { roomType: string, description: string }) => {
     const router = useRouter();
     const [roomIds, setRoomId] = useState("");
     const { createRoom, joinRoom, roomId } = useGameStore();
-
     const [showWaitingModal, setShowWaitingModal] = useState(false);
-
 
     const handleCreateRoom = () => {
         createRoom();
         setShowWaitingModal(true);
-    }
-
+    };
 
     return (
         <>
@@ -68,7 +66,6 @@ export const Room = ({ roomType, description }: { roomType: string, description:
                                 className="rounded-xl w-full"
                                 onClick={() => {
                                     joinRoom(roomIds);
-                                    router.push(`/game/${roomIds}`)
                                 }}
                             >
                                 Join Room

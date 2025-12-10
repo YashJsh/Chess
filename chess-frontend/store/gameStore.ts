@@ -41,6 +41,9 @@ interface GameState {
 
     showPromotionModal: boolean;
     setShowPromotionModal: (show: boolean) => void;
+
+    roomError : string | null;
+    setRoomError : (error : string | null) => void; 
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -60,6 +63,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     checkSquare: null,
     promotionData: null,
     showPromotionModal: false,
+    roomError : null,
+    
 
 
     createRoom: () => {
@@ -187,11 +192,17 @@ export const useGameStore = create<GameState>((set, get) => ({
             console.log("Game over:", data.message, "Winner:", data.winner);
         });
 
-        socket.on("room-full", (data: { msg: string }) => {
-            console.error(data.msg);
+        socket.on("room-full", (data: { code : string, message : string }) => {
+            set({
+                roomError : data.code,
+            })
+            console.error(data.message);
         });
 
-        socket.on("error", (data: { code: string; message: string }) => {
+        socket.on("error-room", (data: { code: string; message: string }) => {
+            set({
+                roomError : data.code,
+            })
             console.error("Room error:", data.message);
         });
 
@@ -236,6 +247,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         socket.off("check");
         socket.off("draw");
         socket.off("Game-over");
+        socket.off("error-room");
+        socket.off("room-full");
     },
 
     setBoard: () => {
@@ -268,6 +281,8 @@ export const useGameStore = create<GameState>((set, get) => ({
                     selected: sq,
                     legalMoves: moves
                 });
+            } else {
+                set({selected : null, legalMoves : []})
             }
         }
         else {
@@ -345,5 +360,11 @@ export const useGameStore = create<GameState>((set, get) => ({
             return false;
         }
     },
+
+    setRoomError : (error)=>{
+        set({
+            roomError : error
+        })
+    }
 }));
 

@@ -8,7 +8,6 @@ export const useGameConnect = () => {
     const { initializeGameListeners, cleanUpListeners, roomId } = useGameStore();
     const { socket, isSocketConnected } = useAuthStore();
     const [listenersReady, setListeners] = useState(false);
-    const triedReconnect = useRef(false);
 
     console.log("Under Game Connect");
 

@@ -4,8 +4,8 @@ import { Room } from '@/components/game/room'
 import { useGameConnect } from '@/hooks/use-game-connection';
 import { useAuthStore } from '@/store/useAuthStore';
 
-const Game = () => {
 
+const Game = () => {
   const { socket } = useAuthStore();  
   useGameConnect();
 

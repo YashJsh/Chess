@@ -56,10 +56,10 @@ export class GameManager {
 
     public joinRoom(socket: Socket, roomId: string){
         console.log("RoomID is : ", roomId);
-
+        
         //Check if room exists;
         if (!this.rooms.has(roomId)) {
-            socket.emit("error", {
+            socket.emit("error-room", {
                 code: "ROOM_NOT_FOUND",
                 message: `Room ${roomId} does not exist`
             });
@@ -69,7 +69,8 @@ export class GameManager {
 
         if (this.rooms.get(roomId)!.players.length >= 2) {
             socket.emit("room-full", {
-                msg: "Room is full"
+                code : "room-full",
+                message: "Room is full"
             });
             console.log("Room FUll");
             return;
@@ -103,11 +104,11 @@ export class GameManager {
         
         if (room.playerReadyCount === 2) {
             console.log("Starting game now");
-            this.game(room.id, playerId);   // 👈 START THE GAME
+            this.game(room.id);   // 👈 START THE GAME
         }
     };
 
-    public game(roomId: string, playerId : string) {
+    public game(roomId: string) {
         const chess = new Chess();
         this.games.set(roomId, chess);
         const room = this.rooms.get(roomId)!;
@@ -119,7 +120,7 @@ export class GameManager {
                 message: "game is started",
                 playertoMove: chess.turn()
             });
-            this.registerMove(roomId, p.socket, playerId);
+            this.registerMove(roomId, p.socket, p.id);
         });
         console.log("Game starting...... ");
     }
