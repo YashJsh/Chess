@@ -2,8 +2,9 @@ import { create } from "zustand";
 import { Chess, Square } from "chess.js";
 import { Piece } from "@/components/game/square";
 import { useAuthStore } from "./useAuthStore";
-import { game_started, invalid_chance, invalid_move, move_played, reconnected_game, room_response } from "@/types/game";
+import { game_ended, game_started, invalid_chance, invalid_move, move_played, player_disconnect, player_reconnected, reconnected_game, room_response } from "@/types/game";
 import { playCaptureSound, playMoveSound } from "@/lib/sound";
+import { toast } from "sonner";
 
 interface GameState {
     chess: Chess,
@@ -44,6 +45,10 @@ interface GameState {
 
     roomError : string | null;
     setRoomError : (error : string | null) => void; 
+
+    showDisconnectTimer : boolean;
+    setShowDisconnectTimer : (show: boolean) => void;
+    disconnectPlayer : "White" | "Black" | null;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -64,7 +69,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     promotionData: null,
     showPromotionModal: false,
     roomError : null,
-    
+
+
+    showDisconnectTimer : false,
+    disconnectPlayer : null,
+
 
 
     createRoom: () => {
@@ -230,6 +239,31 @@ export const useGameStore = create<GameState>((set, get) => ({
             });
             console.log("♻ Successfully restored game state.");
         });
+
+        socket.on("player-disconnected", (data : player_disconnect)=>{
+            toast.warning(data.message);
+            set({
+                showDisconnectTimer : true,
+                disconnectPlayer : data.disconnectedPlayer
+            })
+        });
+
+        socket.on("player-reconnected", (data : player_reconnected)=>{
+            toast.success(data.message);
+            set({
+                showDisconnectTimer : false,
+                disconnectPlayer : null,
+            });
+        });
+
+        socket.on("game-ended", (data : game_ended)=>{
+            toast.error(data.message);
+            set({
+                gameStatus : "checkmate", //Here game ends in a forfiet
+                showDisconnectTimer : false,
+                disconnectPlayer : null,
+            })
+        })
     },
 
     setShowPromotionModal: (show) => set({
@@ -249,6 +283,9 @@ export const useGameStore = create<GameState>((set, get) => ({
         socket.off("Game-over");
         socket.off("error-room");
         socket.off("room-full");
+        socket.off("player-disconnected"); 
+        socket.off("player-reconnected"); 
+        socket.off("game-ended");   
     },
 
     setBoard: () => {
@@ -364,6 +401,12 @@ export const useGameStore = create<GameState>((set, get) => ({
     setRoomError : (error)=>{
         set({
             roomError : error
+        })
+    },
+
+    setShowDisconnectTimer : (show)=>{
+        set({
+            showDisconnectTimer : show
         })
     }
 }));

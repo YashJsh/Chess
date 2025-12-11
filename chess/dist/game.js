@@ -4,6 +4,7 @@ import { uuid } from "uuidv4";
 export class GameManager {
     rooms = new Map();
     games = new Map();
+    Disconnect_TIMEOUT = 15000;
     createRoom(socket) {
         const roomId = uuidv4();
         socket.join(roomId);
@@ -20,6 +21,8 @@ export class GameManager {
             capturedPieces: []
         };
         this.rooms.set(roomId, room);
+        socket.data.playerId = player.id;
+        socket.data.roomId = room.id;
         socket.emit("room-created", {
             room: roomId,
             player_id: player.id,
@@ -56,6 +59,8 @@ export class GameManager {
         };
         const room = this.rooms.get(roomId);
         room.players.push(player);
+        socket.data.playerId = player.id;
+        socket.data.roomId = room.id;
         socket.emit("room-joined", {
             room: roomId,
             player_id: player.id,
@@ -254,6 +259,21 @@ export class GameManager {
             console.log("Game is not present");
             return;
         }
+        ;
+        // Canceling disconnect Timer if is present.
+        if (room.disconnectTimer && room.disconnectedPlayerId === playerId) {
+            clearTimeout(room.disconnectTimer);
+            room.disconnectTimer = undefined;
+            room.disconnectedPlayerId = undefined;
+            console.log(`Player ID ${playerId} reconnected`);
+            //Notifying other he reconneted : 
+            room.players.forEach(p => {
+                p.socket.emit("player-reconnected", {
+                    message: "Opponent reconnecteed!",
+                    reconnectedPlayer: player.color
+                });
+            });
+        }
         console.log("🔁 Player reconnected:", playerId);
         this.registerMove(roomId, socket, playerId);
         // send entire game snapshot
@@ -265,6 +285,76 @@ export class GameManager {
             capturedPieces: room.capturedPieces,
             message: "Reconnected successfully"
         });
+    }
+    handleDisconnect(socket, playerId) {
+        let disconnectRoom;
+        //Find the room first with player ID :
+        for (const [roomId, room] of this.rooms.entries()) {
+            const player = room.players.find(p => p.id === playerId);
+            if (player) {
+                disconnectRoom = room;
+                console.log(`Player ${playerId} Disconnected from Room.`);
+                //Timer to start here : 
+                const chess = this.games.get(roomId);
+                if (!chess || room.players.length < 2) {
+                    console.log("Game not started yet or not enough players");
+                    continue;
+                }
+                //Notifying other player
+                room.players.forEach(p => {
+                    if (p.id !== playerId) {
+                        p.socket.emit("player-disconnected", {
+                            message: "Oponnent disconnected",
+                            disconnectedPlayer: player.color,
+                            timeoutSeconds: 15
+                        });
+                    }
+                });
+                //Clearing any disconnected Timer
+                if (room.disconnectTimer) {
+                    clearTimeout(room.disconnectTimer);
+                }
+                ;
+                room.disconnectedPlayerId = playerId;
+                //Starting countdown:
+                room.disconnectTimer = setTimeout(() => {
+                    this.handleDisconnectTimeout(roomId, playerId);
+                }, this.Disconnect_TIMEOUT);
+                console.log("Timer Started");
+            }
+            ;
+        }
+    }
+    handleDisconnectTimeout(roomId, playerId) {
+        const room = this.rooms.get(roomId);
+        if (!room)
+            return;
+        //Checking if player still discnnected : 
+        const player = room.players.find(p => p.id === playerId);
+        if (!player)
+            return;
+        const winner = room.players.find(p => p.id !== playerId);
+        if (!winner)
+            return;
+        room.players.forEach(p => {
+            p.socket.emit("game-ended", {
+                reason: "opponent-disconnected",
+                winner: winner.color,
+                message: `${player.color} player disconnected`
+            });
+        });
+        this.endGame(roomId);
+    }
+    endGame(roomId) {
+        const room = this.rooms.get(roomId);
+        if (!room)
+            return;
+        if (room.disconnectTimer) {
+            clearTimeout(room.disconnectTimer);
+        }
+        ;
+        this.rooms.delete(roomId);
+        this.games.delete(roomId);
     }
 }
 //# sourceMappingURL=game.js.map

@@ -43,3 +43,20 @@ export interface reconnected_game{
     message: string,
     capturedPieces : string[]
 }
+
+export interface player_disconnect{
+    message : string;
+    disconnectedPlayer : "White" | "Black";
+    timeoutSeconds : number;
+}
+
+export interface player_reconnected {
+    message : string;
+    reconnectedPlayer : "White" | "Black";
+};
+
+export interface game_ended{
+    reason : string;
+    winner : "White" | "Black";
+    message : string;
+}

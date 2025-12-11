@@ -25,12 +25,13 @@ export const init = (io : Server)=>{
         })
 
         socket.on("disconnect", ()=>{
-            io.emit("Player disconnected", ()=>{
-                playerId : socket.id
-            })
+            const playerId = socket.data.playerId;
+            console.log(playerId);
+            console.log("user-disconnected", socket.id);
+            game.handleDisconnect(socket, playerId);
         });
     });
-}
+};
 
 
 
