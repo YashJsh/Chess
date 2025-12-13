@@ -216,6 +216,7 @@ export class GameManager {
                         message: "Checkmate"
                     });
                 });
+                this.endGame(roomId);
                 return;
             }
             else if (chess?.isInsufficientMaterial() || chess?.isStalemate()) {
@@ -253,13 +254,16 @@ export class GameManager {
         player.socket = socket;
         const chess = this.games.get(roomId);
         if (!chess) {
-            socket.emit("game-not-found", {
-                message: "game not found"
+            socket.emit("session-invalid", {
+                message: "game-not-found"
             });
             console.log("Game is not present");
             return;
         }
         ;
+        socket.data.playerId = playerId,
+            socket.data.roomId = roomId;
+        socket.emit("session-valid");
         // Canceling disconnect Timer if is present.
         if (room.disconnectTimer && room.disconnectedPlayerId === playerId) {
             clearTimeout(room.disconnectTimer);
@@ -277,15 +281,15 @@ export class GameManager {
         console.log("🔁 Player reconnected:", playerId);
         this.registerMove(roomId, socket, playerId);
         // send entire game snapshot
-        socket.emit("reconnected", {
+        socket.emit("reconnected-game", {
             board: chess.fen(),
             color: player?.color,
             turn: chess.turn(),
             history: room.moveHistory,
             capturedPieces: room.capturedPieces,
-            message: "Reconnected successfully"
         });
     }
+    ;
     handleDisconnect(socket, playerId) {
         let disconnectRoom;
         //Find the room first with player ID :
@@ -353,6 +357,9 @@ export class GameManager {
             clearTimeout(room.disconnectTimer);
         }
         ;
+        room.players.forEach(p => {
+            p.socket.leave(roomId);
+        });
         this.rooms.delete(roomId);
         this.games.delete(roomId);
     }

@@ -40,7 +40,6 @@ export interface reconnected_game{
         fen : string,
         by : string
     }[],
-    message: string,
     capturedPieces : string[]
 }
 

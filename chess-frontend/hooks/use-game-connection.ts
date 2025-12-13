@@ -35,8 +35,7 @@ export const useGameConnect = () => {
 
     useEffect(() => {
         if (!socket || !isSocketConnected) return;
-        console.log("Not running");
-
+    
         const savedRoom = localStorage.getItem("roomId");
         const savedPlayer = localStorage.getItem("playerId");
         console.log("Socket is present", socket.id);

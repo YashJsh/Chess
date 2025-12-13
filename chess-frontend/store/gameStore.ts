@@ -43,12 +43,14 @@ interface GameState {
     showPromotionModal: boolean;
     setShowPromotionModal: (show: boolean) => void;
 
-    roomError : string | null;
-    setRoomError : (error : string | null) => void; 
+    roomError: string | null;
+    setRoomError: (error: string | null) => void;
 
-    showDisconnectTimer : boolean;
-    setShowDisconnectTimer : (show: boolean) => void;
-    disconnectPlayer : "White" | "Black" | null;
+    showDisconnectTimer: boolean;
+    setShowDisconnectTimer: (show: boolean) => void;
+    disconnectPlayer: "White" | "Black" | null;
+
+    resetGame: () => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -68,12 +70,31 @@ export const useGameStore = create<GameState>((set, get) => ({
     checkSquare: null,
     promotionData: null,
     showPromotionModal: false,
-    roomError : null,
+    roomError: null,
+    showDisconnectTimer: false,
+    disconnectPlayer: null,
 
-
-    showDisconnectTimer : false,
-    disconnectPlayer : null,
-
+    resetGame: () => {
+        set({
+            chess: new Chess(),
+            board: null,
+            selected: null,
+            legalMoves: [],
+            history: [],
+            capturedPieces: [],
+            roomId: null,
+            playerId: null,
+            playerColor: "White",
+            currentTurn: null,
+            gameStatus: "waiting",
+            checkSquare: null,
+            promotionData: null,
+            showPromotionModal: false,
+            roomError: null,
+            showDisconnectTimer: false,
+            disconnectPlayer: null,
+        });
+    },
 
 
     createRoom: () => {
@@ -131,7 +152,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
         socket.on("move-played", (data: move_played) => {
             const newChess = new Chess(data.board);
-    
+
             let checksq = get().checkSquare;
 
             if (newChess.isCheck()) {
@@ -201,16 +222,16 @@ export const useGameStore = create<GameState>((set, get) => ({
             console.log("Game over:", data.message, "Winner:", data.winner);
         });
 
-        socket.on("room-full", (data: { code : string, message : string }) => {
+        socket.on("room-full", (data: { code: string, message: string }) => {
             set({
-                roomError : data.code,
+                roomError: data.code,
             })
             console.error(data.message);
         });
 
         socket.on("error-room", (data: { code: string; message: string }) => {
             set({
-                roomError : data.code,
+                roomError: data.code,
             })
             console.error("Room error:", data.message);
         });
@@ -221,11 +242,11 @@ export const useGameStore = create<GameState>((set, get) => ({
                     from: data.from,
                     to: data.to,
                 },
-                showPromotionModal : true,
+                showPromotionModal: true,
             })
         });
 
-        socket.on("reconnected", (data: reconnected_game) => {
+        socket.on("reconnected-game", (data: reconnected_game) => {
             const restoredChess = new Chess(data.board);
 
             set({
@@ -235,39 +256,40 @@ export const useGameStore = create<GameState>((set, get) => ({
                 currentTurn: data.turn as "w" | "b",
                 history: data.history.map(s => s.san),
                 gameStatus: restoredChess.isCheck() ? "check" : "playing",
-                capturedPieces : data.capturedPieces as Piece[]
+                capturedPieces: data.capturedPieces as Piece[]
             });
             console.log("♻ Successfully restored game state.");
         });
 
-        socket.on("player-disconnected", (data : player_disconnect)=>{
+        socket.on("player-disconnected", (data: player_disconnect) => {
             toast.warning(data.message);
             set({
-                showDisconnectTimer : true,
-                disconnectPlayer : data.disconnectedPlayer
+                showDisconnectTimer: true,
+                disconnectPlayer: data.disconnectedPlayer
             })
         });
 
-        socket.on("player-reconnected", (data : player_reconnected)=>{
+        //Player-reconnected is for ui only, timer thing.
+        socket.on("player-reconnected", (data: player_reconnected) => {
             toast.success(data.message);
             set({
-                showDisconnectTimer : false,
-                disconnectPlayer : null,
+                showDisconnectTimer: false,
+                disconnectPlayer: null,
             });
         });
 
-        socket.on("game-ended", (data : game_ended)=>{
+        socket.on("game-ended", (data: game_ended) => {
             toast.error(data.message);
             set({
-                gameStatus : "checkmate", //Here game ends in a forfiet
-                showDisconnectTimer : false,
-                disconnectPlayer : null,
+                gameStatus: "checkmate", //Here game ends in a forfiet
+                showDisconnectTimer: false,
+                disconnectPlayer: null,
             })
         })
     },
 
     setShowPromotionModal: (show) => set({
-         showPromotionModal: show 
+        showPromotionModal: show
     }),
 
     cleanUpListeners: () => {
@@ -283,9 +305,9 @@ export const useGameStore = create<GameState>((set, get) => ({
         socket.off("Game-over");
         socket.off("error-room");
         socket.off("room-full");
-        socket.off("player-disconnected"); 
-        socket.off("player-reconnected"); 
-        socket.off("game-ended");   
+        socket.off("player-disconnected");
+        socket.off("player-reconnected");
+        socket.off("game-ended");
     },
 
     setBoard: () => {
@@ -319,7 +341,7 @@ export const useGameStore = create<GameState>((set, get) => ({
                     legalMoves: moves
                 });
             } else {
-                set({selected : null, legalMoves : []})
+                set({ selected: null, legalMoves: [] })
             }
         }
         else {
@@ -335,7 +357,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         set({ legalMoves: moves });
     },
 
-   
+
 
     setPromotionData: (data) => {
         set({ promotionData: data })
@@ -344,7 +366,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     handlePromotion: (piece) => {
         console.log("INSIDE HANDLE PROMOTION ❤️");
         console.log("PROMOTION DATA");
-        
+
         const { promotionData } = get();
         console.log(promotionData);
         if (!promotionData) {
@@ -389,7 +411,7 @@ export const useGameStore = create<GameState>((set, get) => ({
                 board: optimistic_board.board(),
                 selected: null,
                 legalMoves: [],
-                showPromotionModal : false
+                showPromotionModal: false
             })
             return true;
         } catch (error) {
@@ -398,16 +420,17 @@ export const useGameStore = create<GameState>((set, get) => ({
         }
     },
 
-    setRoomError : (error)=>{
+    setRoomError: (error) => {
         set({
-            roomError : error
+            roomError: error
         })
     },
 
-    setShowDisconnectTimer : (show)=>{
+    setShowDisconnectTimer: (show) => {
         set({
-            showDisconnectTimer : show
+            showDisconnectTimer: show
         })
-    }
+    },
+
 }));
 

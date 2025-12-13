@@ -16,11 +16,10 @@ export function GameRouteGuard({ children }: { children: React.ReactNode }) {
     const gameId = params.roomId as string;
 
     useEffect(() => {
-        if (!socket) {
+        if (!socket || !gameId) {
             setIsValidating(true);
             return;
         }
-
         // Check if user has access to this room
         const savedRoomId = localStorage.getItem("roomId");
         const savedPlayerId = localStorage.getItem("playerId");
@@ -31,52 +30,44 @@ export function GameRouteGuard({ children }: { children: React.ReactNode }) {
             setTimeout(() => router.push("/"), 1500);
             return;
         }
-        
-        console.log("Game ID : ", gameId);
-        console.log("ROOM ID FROM STORAGE", savedRoomId);
 
-        // If they have saved data but it doesn't match the URL
-        if (savedRoomId && savedRoomId !== gameId) {
-            toast.error("You don't have access to this game");
-            setTimeout(() => router.push("/"), 1500);
+        //For fresh game : 
+        if (!savedPlayerId || !savedRoomId){
+            setIsValid(true);
+            setIsValidating(false);
             return;
         }
 
-        // Try to reconnect if they have valid credentials
-        if (savedRoomId === gameId && savedPlayerId) {
-            console.log("🔐 Validating game access...");
-            
-            const handleReconnected = () => {
-                console.log("✅ Game access validated");
-                toast.success("Game session restored!");
-                setIsValidating(false);
-                setIsValid(true);
-                socket.off("reconnected", handleReconnected);
-                socket.off("error", handleError);
-            };
-
-            const handleError = (data: { message: string }) => {
-                console.error("❌ Game validation failed:", data.message);
-                toast.error(data.message || "Failed to validate game access");
-                setTimeout(() => router.push("/"), 1500);
-                setIsValidating(false);
-                socket.off("reconnected", handleReconnected);
-                socket.off("error", handleError);
-            };
-
-            socket.on("reconnected", handleReconnected);
-            socket.on("error", handleError);
-
-            return () => {
-                socket.off("reconnected", handleReconnected);
-                socket.off("error", handleError);
-            };
-        } else {
-            // Valid scenario - user just joined/created room
-            setIsValidating(false);
+        const onValid = ()=>{
+            console.log("Valid session");
             setIsValid(true);
+            setIsValidating(false);
+            cleanup();
         }
-    }, [socket, gameId, router, isValidating]);
+
+        const onInvalid = (data : {message : string})=>{
+            console.log("Invalid-session");
+            toast.error(data.message);
+            setIsValidating(false);
+            setIsValid(false);
+            router.replace("/game");
+            cleanup();
+        }
+
+        socket.on("session-valid", onValid);
+        socket.on("session-invalid", onInvalid);
+
+        socket.emit("reconnect-game", {
+            playerId : savedPlayerId,
+            roomId : savedRoomId
+        });
+
+        const cleanup = () => {
+            socket.off("session-valid", onValid);
+            socket.off("session-invalid", onInvalid);
+        };
+        return cleanup;
+    }, [socket, gameId, router]);
 
     // Loading state
     if (isValidating) {

@@ -12,11 +12,19 @@ import { useRouter } from "next/navigation";
 
 export const Result = () => {
     const router = useRouter();
-    const { gameStatus, currentTurn } = useGameStore();
+    const { gameStatus, currentTurn, resetGame } = useGameStore();
     if (gameStatus === "draw" || gameStatus === "checkmate") {
         localStorage.removeItem("playerId");
         localStorage.removeItem("roomId");
     };
+
+    const goToDashboard = ()=>{
+        localStorage.removeItem("playerId");
+        localStorage.removeItem("roomId");
+        resetGame();
+        router.replace("/game");
+        router.refresh();
+    }
 
     return <>
         {
@@ -35,7 +43,7 @@ export const Result = () => {
 
                         {/* Buttons Section */}
                         <div className="flex flex-col sm:flex-row gap-3 pt-2 justify-center">
-                            <Button className="w-full sm:w-auto" variant="default" onClick={() => router.push("/game")}>
+                            <Button className="w-full sm:w-auto" variant="default" onClick={goToDashboard}>
                                 Dashboard
                             </Button>
                             <Button className="w-full sm:w-auto" variant="outline">
@@ -63,7 +71,10 @@ export const Result = () => {
 
                         {/* Buttons Section */}
                         <div className="flex flex-col sm:flex-row gap-3 pt-2 justify-center">
-                            <Button className="w-full sm:w-auto" variant="default" onClick={() => router.push("/game")}>
+                            
+                            <Button className="w-full sm:w-auto" variant="default"
+                                onClick={goToDashboard}
+                            >
                                 Dashboard
                             </Button>
                             <Button className="w-full sm:w-auto" variant="outline">
