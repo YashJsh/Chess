@@ -1,5 +1,7 @@
 import type { Server } from "socket.io";
 import { GameManager } from "./game.js";
+import { logger } from "./lib/logger.js";
+
 
 const game = new GameManager();
 
@@ -11,12 +13,10 @@ export const init = (io : Server)=>{
         });
 
         socket.on("join-room", ({roomId} : {roomId : string})=>{
-            console.log("roomid is : ", roomId);
             game.joinRoom(socket, roomId);
         }); 
 
         socket.on("player-ready", ({playerId} : {playerId : string})=>{
-            console.log("playerReady : ", socket.id);
             game.playerReady(socket, playerId);
         });
 
@@ -26,8 +26,7 @@ export const init = (io : Server)=>{
 
         socket.on("disconnect", ()=>{
             const playerId = socket.data.playerId;
-            console.log(playerId);
-            console.log("user-disconnected", socket.id);
+            logger.info("Player Disconnected");
             game.handleDisconnect(socket, playerId);
         });
     });

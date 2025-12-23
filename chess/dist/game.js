@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { Chess } from "chess.js";
 import { uuid } from "uuidv4";
+import { logger } from "./lib/logger.js";
 export class GameManager {
     rooms = new Map();
     games = new Map();
@@ -28,20 +29,18 @@ export class GameManager {
             player_id: player.id,
             message: "Room Created Successfully"
         });
-        console.log("Room created:", roomId);
-        console.log("and socket Id is : ", socket.id);
-        console.log("Player Id is :", player.id);
+        logger.info({ roomId, playerId: player.id, socketId: socket.id }, "Room created and host joined");
     }
     ;
     joinRoom(socket, roomId) {
-        console.log("RoomID is : ", roomId);
+        logger.info({ roomId, socketId: socket.id }, "Player attempting to join room");
         //Check if room exists;
         if (!this.rooms.has(roomId)) {
             socket.emit("error-room", {
                 code: "ROOM_NOT_FOUND",
                 message: `Room ${roomId} does not exist`
             });
-            console.log("Room Doesn't exist");
+            logger.warn({ roomId }, "Join failed: room not found");
             return;
         }
         if (this.rooms.get(roomId).players.length >= 2) {
@@ -49,7 +48,7 @@ export class GameManager {
                 code: "room-full",
                 message: "Room is full"
             });
-            console.log("Room FUll");
+            logger.warn({ roomId }, "Join failed: room full");
             return;
         }
         const player = {
@@ -66,19 +65,20 @@ export class GameManager {
             player_id: player.id,
             message: "Room Joined Successfully"
         });
+        logger.info({ roomId, playerId: socket.data.playerId }, "Player joined room");
     }
     ;
     playerReady(socket, playerId) {
         const room = this.rooms.values().find(r => r.players.some(p => p.id === playerId));
         if (!room) {
-            console.log("Room is not present");
+            logger.warn({ playerId }, "Player ready failed: room not found");
             return;
         }
         room.playerReadyCount++;
-        console.log("Player ready with Id:", playerId, "Ready count:", room.playerReadyCount);
+        logger.info({ roomId: room.id, playerId, readyCount: room.playerReadyCount }, "Player marked ready");
         if (room.playerReadyCount === 2) {
-            console.log("Starting game now");
-            this.game(room.id); // 👈 START THE GAME
+            logger.info({ roomId: room.id }, "All players ready, starting game");
+            this.game(room.id);
         }
     }
     ;
@@ -95,32 +95,30 @@ export class GameManager {
             });
             this.registerMove(roomId, p.socket, p.id);
         });
-        console.log("Game starting...... ");
+        logger.info({ roomId }, "Game started");
     }
     registerMove(roomId, socket, playerId) {
         const chess = this.games.get(roomId);
         const room = this.rooms.get(roomId);
         socket.on("move", ({ from, to, promotion }) => {
-            console.log("from", from);
-            console.log("to", to);
-            // Check whose move is that'
+            logger.debug({ roomId, playerId, from, to, promotion }, "Move received");
             if (!chess || !this.rooms.get(roomId)) {
                 socket.emit("game-not-started", {
                     players: room?.players.length,
                 });
-                console.log("Players on room", room?.players.length);
+                logger.warn("Game not started");
                 return;
             }
             ;
             //Check for the particular player;
             const player = room?.players.find(p => p.id === playerId);
             if (!player) {
-                console.log("Player doesn't exist in this particular room");
+                logger.warn({ playerId, roomId }, "Player not in this room");
                 return;
             }
             const turn = chess.turn() === "w" ? "White" : "Black";
             if (turn != player.color) {
-                console.log("This is not your chance, chance is of : ", turn);
+                logger.warn({ roomId, playerId, expectedTurn: turn }, "Player tried to move out of turn");
                 socket.emit("invalid-chance", {
                     message: "It is not your chance to move",
                     turn: chess.turn()
@@ -162,7 +160,6 @@ export class GameManager {
                         : capturedPiece.type.toLowerCase();
                     room?.capturedPieces.push(pieceNotation);
                 }
-                console.log("Making Move now......");
                 room?.players.forEach(p => {
                     p.socket.emit("move-played", {
                         board: chess.fen(),
@@ -173,27 +170,30 @@ export class GameManager {
                         capturedPieces: room.capturedPieces
                     });
                 });
-                console.log("..............");
-                console.log(chess.fen());
-                console.log(room?.moveHistory);
+                logger.info({
+                    roomId,
+                    playerId,
+                    san,
+                    fen: chess.fen()
+                }, "Move applied");
                 if (this.isCheck(roomId)) {
                     socket.to(roomId).emit("check", {
                         message: "Check",
                     });
-                    console.log("Check ongoing");
+                    logger.info({ roomId }, "Check detected");
                 }
                 ;
                 if (this.isDraw(roomId)) {
                     socket.to(roomId).emit("draw", {
                         message: "Match draw"
                     });
-                    console.log("Match draw");
+                    logger.info({ roomId }, "Match Draw");
                 }
                 ;
                 this.gameState(roomId, socket);
             }
             catch (error) {
-                console.log("Invalid move attempted:", from, to);
+                logger.warn({ roomId, playerId, from, to, error }, "Invalid move attempted");
                 socket.emit("invalid-move", {
                     message: "Move is invalid",
                     from: from,
@@ -205,11 +205,9 @@ export class GameManager {
     gameState(roomId, socket) {
         const chess = this.games.get(roomId);
         const room = this.rooms.get(roomId);
-        console.log("Chess State ");
-        console.log(chess?.fen());
         if (chess?.isGameOver()) {
             if (chess?.isCheckmate()) {
-                console.log("Checkmate");
+                logger.info({ roomId, winner: chess.turn() === "w" ? "Black" : "White" }, "Game ended by checkmate");
                 room?.players.forEach(p => {
                     p.socket.emit("Game-over", {
                         winner: chess.turn() === "w" ? "Black" : "White", // Winner is opposite of current turn
@@ -220,11 +218,10 @@ export class GameManager {
                 return;
             }
             else if (chess?.isInsufficientMaterial() || chess?.isStalemate()) {
-                console.log("Match draw");
+                logger.info({ roomId }, "Draw detected");
                 socket.to(roomId).emit("draw", {
                     message: "Match draw"
                 });
-                console.log("Match draw");
                 return;
             }
         }
@@ -238,6 +235,7 @@ export class GameManager {
         return chess?.isDraw();
     }
     reconnectPlayer(socket, roomId, playerId) {
+        logger.info({ roomId, playerId }, "Player attempting reconnection");
         const room = this.rooms.get(roomId);
         if (!room) {
             socket.emit("error", { message: "Room not found" });
@@ -257,7 +255,7 @@ export class GameManager {
             socket.emit("session-invalid", {
                 message: "game-not-found"
             });
-            console.log("Game is not present");
+            logger.warn({ roomId, playerId }, "Reconnect failed: game not found");
             return;
         }
         ;
@@ -269,7 +267,7 @@ export class GameManager {
             clearTimeout(room.disconnectTimer);
             room.disconnectTimer = undefined;
             room.disconnectedPlayerId = undefined;
-            console.log(`Player ID ${playerId} reconnected`);
+            logger.info({ roomId, playerId }, "Player successfully reconnected, timer cleared");
             //Notifying other he reconneted : 
             room.players.forEach(p => {
                 p.socket.emit("player-reconnected", {
@@ -278,7 +276,6 @@ export class GameManager {
                 });
             });
         }
-        console.log("🔁 Player reconnected:", playerId);
         this.registerMove(roomId, socket, playerId);
         // send entire game snapshot
         socket.emit("reconnected-game", {
@@ -297,11 +294,11 @@ export class GameManager {
             const player = room.players.find(p => p.id === playerId);
             if (player) {
                 disconnectRoom = room;
-                console.log(`Player ${playerId} Disconnected from Room.`);
+                logger.warn({ roomId, playerId }, "Player disconnected, starting timeout");
                 //Timer to start here : 
                 const chess = this.games.get(roomId);
                 if (!chess || room.players.length < 2) {
-                    console.log("Game not started yet or not enough players");
+                    logger.warn({ roomId, playerId }, "game not started");
                     continue;
                 }
                 //Notifying other player
@@ -324,7 +321,6 @@ export class GameManager {
                 room.disconnectTimer = setTimeout(() => {
                     this.handleDisconnectTimeout(roomId, playerId);
                 }, this.Disconnect_TIMEOUT);
-                console.log("Timer Started");
             }
             ;
         }
@@ -347,9 +343,11 @@ export class GameManager {
                 message: `${player.color} player disconnected`
             });
         });
+        logger.info({ roomId, disconnectedPlayer: playerId, winner: winner.color }, "Game ended due to disconnect timeout");
         this.endGame(roomId);
     }
     endGame(roomId) {
+        logger.info({ roomId }, "Cleaning up game and room");
         const room = this.rooms.get(roomId);
         if (!room)
             return;

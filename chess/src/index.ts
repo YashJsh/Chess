@@ -3,6 +3,7 @@ import express, { urlencoded } from "express";
 import { createServer } from "http"
 import { init } from "./socket.js";
 import dotenv from "dotenv";
+import { logger } from "./lib/logger.js";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -37,7 +38,29 @@ const io = new Server(httpServer, {
 init(io);
 
 httpServer.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
-    console.log(`CORS origin: ${CORS_ORIGIN}`);
+    logger.info({
+        port: PORT,
+        cors: CORS_ORIGIN,
+        env: process.env.NODE_ENV
+    }, "Server configuration loaded");
+});
+
+const shutdown = () => {
+    logger.info("Shutting down server...");
+  
+    httpServer.close(() => {
+      logger.info("HTTP server closed");
+      process.exit(0);
+    });
+  };
+  
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+process.on("unhandledRejection", (reason) => {
+    logger.error({ reason }, "Unhandled promise rejection");
+  });
+process.on("uncaughtException", (err) => {
+    logger.error({ err }, "Uncaught exception");
+    process.exit(1);
 });
 

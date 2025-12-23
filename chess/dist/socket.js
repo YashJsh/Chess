@@ -1,4 +1,5 @@
 import { GameManager } from "./game.js";
+import { logger } from "./lib/logger.js";
 const game = new GameManager();
 export const init = (io) => {
     io.on("connection", (socket) => {
@@ -7,11 +8,9 @@ export const init = (io) => {
             game.createRoom(socket);
         });
         socket.on("join-room", ({ roomId }) => {
-            console.log("roomid is : ", roomId);
             game.joinRoom(socket, roomId);
         });
         socket.on("player-ready", ({ playerId }) => {
-            console.log("playerReady : ", socket.id);
             game.playerReady(socket, playerId);
         });
         socket.on("reconnect-game", ({ roomId, playerId }) => {
@@ -19,8 +18,7 @@ export const init = (io) => {
         });
         socket.on("disconnect", () => {
             const playerId = socket.data.playerId;
-            console.log(playerId);
-            console.log("user-disconnected", socket.id);
+            logger.info("Player Disconnected");
             game.handleDisconnect(socket, playerId);
         });
     });
