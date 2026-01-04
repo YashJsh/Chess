@@ -26,7 +26,7 @@ app.get("/health", (req,res)=>{
 
 // Get environment variables with defaults
 const PORT = process.env.PORT || 3001;
-const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
+const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:3000";
 
 // Initialize Socket.IO with the HTTP server
 const io = new Server(httpServer, {

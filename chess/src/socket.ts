@@ -7,7 +7,6 @@ const game = new GameManager();
 
 export const init = (io : Server)=>{
     io.on("connection", (socket) => {
-        console.log(socket.id);
         socket.on("create-room", ()=>{
             game.createRoom(socket);
         });
@@ -26,6 +25,10 @@ export const init = (io : Server)=>{
 
         socket.on("disconnect", ()=>{
             const playerId = socket.data.playerId;
+            if (!playerId) {
+                logger.warn({ socketId: socket.id }, "Disconnect before playerId assigned");
+                return;
+              }
             logger.info("Player Disconnected");
             game.handleDisconnect(socket, playerId);
         });

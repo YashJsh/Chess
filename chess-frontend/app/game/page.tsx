@@ -10,7 +10,15 @@ const Game = () => {
   useGameConnect();
 
   return (
-    <div className="w-screen h-screen">
+    <div className="relative w-screen h-screen">
+        <div 
+        className="absolute inset-0 z-0 opacity-[0.4] pointer-events-none" 
+        style={{
+          backgroundImage: `linear-gradient(#E5E5E5 1px, transparent 1px), linear-gradient(to right, #E5E5E5 1px, transparent 1px)`,
+          backgroundSize: '3rem 3rem',
+          maskImage: 'radial-gradient(ellipse at center, black 50%, transparent 100%)'
+        }}
+      />
       <div
         className="
           flex flex-col 
@@ -19,6 +27,8 @@ const Game = () => {
           h-full 
           px-4
           md:flex-row md:gap-10 md:px-10
+          z-10
+          relative
         "
       >
         <Room
