@@ -3,7 +3,6 @@ import { logger } from "./lib/logger.js";
 const game = new GameManager();
 export const init = (io) => {
     io.on("connection", (socket) => {
-        console.log(socket.id);
         socket.on("create-room", () => {
             game.createRoom(socket);
         });
@@ -18,7 +17,11 @@ export const init = (io) => {
         });
         socket.on("disconnect", () => {
             const playerId = socket.data.playerId;
-            logger.info("Player Disconnected");
+            if (!playerId) {
+                logger.warn({ socketId: socket.id }, "Disconnect before playerId assigned");
+                return;
+            }
+            logger.info({ playerId, socketId: socket.id }, "Player disconnected");
             game.handleDisconnect(socket, playerId);
         });
     });

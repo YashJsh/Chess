@@ -1,14 +1,18 @@
 "use client"
 
+import { sendHealthRequest } from "@/api/health.api";
+import { HealthWarmup } from "@/components/health/healthWarmUp";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function Home() {
   const router = useRouter();
 
   return (
     <div className="w-screen h-screen flex items-center justify-center">
+      <HealthWarmup />
       <div 
         className="absolute inset-0 z-0 opacity-[0.4] pointer-events-none" 
         style={{

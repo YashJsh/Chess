@@ -9,11 +9,10 @@ export const useGameConnect = () => {
     const { socket, isSocketConnected } = useAuthStore();
     const [listenersReady, setListeners] = useState(false);
 
-    console.log("Under Game Connect");
 
     useEffect(() => {
         console.log("Initializing Game Listeners");
-        console.log("Socket Id is : ", socket?.id);
+        console.log("Socket ID is : ", socket?.id)
         if (socket) {
             initializeGameListeners();
             setListeners(true);
