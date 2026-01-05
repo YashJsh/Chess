@@ -4,38 +4,47 @@ import { createServer } from "http";
 import { init } from "./socket.js";
 import dotenv from "dotenv";
 import { logger } from "./lib/logger.js";
-// Load environment variables from .env file
+import cors from "cors";
 dotenv.config();
+const PORT = process.env.PORT || 3001;
+const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:3000";
 const app = express();
 const httpServer = createServer(app);
 app.use(express.json());
+app.use(cors({
+    origin: CORS_ORIGIN === "*"
+        ? "*"
+        : CORS_ORIGIN.split(",").map((o) => o.trim()),
+    credentials: true,
+}));
 app.use(urlencoded({ extended: true }));
 app.use(express.static("public"));
-app.get("/health", (req, res) => {
+// Lightweight health-check endpoint for uptime checks and load balancers.
+app.get("/health", (_req, res) => {
     res.status(200).json({
         status: "ok",
         timeStamp: new Date().toISOString(),
         uptime: process.uptime(),
-        service: "chess-game-server"
+        service: "chess-game-server",
     });
 });
-// Get environment variables with defaults
-const PORT = process.env.PORT || 3001;
-const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
-// Initialize Socket.IO with the HTTP server
 const io = new Server(httpServer, {
     cors: {
-        origin: CORS_ORIGIN === "*" ? "*" : CORS_ORIGIN.split(",").map(origin => origin.trim())
-    }
+        origin: CORS_ORIGIN === "*"
+            ? "*"
+            : CORS_ORIGIN.split(",").map((origin) => origin.trim()),
+    },
 });
 init(io);
 httpServer.listen(PORT, () => {
     logger.info({
         port: PORT,
         cors: CORS_ORIGIN,
-        env: process.env.NODE_ENV
+        env: process.env.NODE_ENV,
     }, "Server configuration loaded");
 });
+// Centralised graceful-shutdown handler to ensure the HTTP server
+// is closed cleanly in production deployments (e.g. Kubernetes).
 const shutdown = () => {
     logger.info("Shutting down server...");
     httpServer.close(() => {
