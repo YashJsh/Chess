@@ -16,7 +16,7 @@ export const Captured = () => {
 
     return (
         <div className="flex flex-col gap-5">
-            <div className="text-primary rounded-xl px-2 bg-slate-100 flex gap-2">
+            <div className="rounded-xl px-2 bg-slate-100 flex gap-2">
                 <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold  uppercase tracking-tighter ">
                         Black

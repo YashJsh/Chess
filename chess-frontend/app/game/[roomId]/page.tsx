@@ -5,6 +5,7 @@ import { Captured } from '@/components/game/captured'
 import { Moves } from '@/components/game/history'
 import { Result } from '@/components/game/result'
 import { DisconnectTimer } from '@/components/game/timer'
+import { GameTimer } from '@/components/game/game-timer'
 import { useGameConnect } from '@/hooks/use-game-connection'
 import { GameRouteGuard } from '@/middleware/gameroute'
 import { useGameStore } from '@/store/gameStore'
@@ -25,7 +26,8 @@ const ChessGame = () => {
       >
         <div
           className="
-          flex items-center justify-center
+          flex flex-col
+          items-center justify-center
           p-2
           bg-transparent
           md:col-span-2
@@ -48,7 +50,11 @@ const ChessGame = () => {
             <p className="text-xs mt-1">Track moves & captures</p>
           </div>
 
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          <div className="">
+            <GameTimer/>
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-y-auto border-1 rounded-xl">
             <Moves />
           </div>
 

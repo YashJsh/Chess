@@ -9,6 +9,8 @@ export class RoomHandler {
     private onGameStart: ((roomId: string) => void) | null = null;
     private getChessInstanceFn: ((roomId: string) => any) | null = null;
     private removeGame: ((roomId: string) => void) | null = null;
+    private getTimerFn: ((roomId: string) => { white: number; black: number } | null) | null = null;
+    private registerMoveCallback: ((roomId: string, socket: Socket, playerId: string, room: Room) => void) | null = null;
 
     public setGameStartCallback(callback: (roomId: string) => void) {
         this.onGameStart = callback;
@@ -22,7 +24,15 @@ export class RoomHandler {
         this.removeGame = callback;
     }
 
-    public createRoom(socket: Socket) {
+    public setTimerGetter(callback: (roomId: string) => { white: number; black: number } | null) {
+        this.getTimerFn = callback;
+    }
+
+    public setRegisterMoveCallback(callback: (roomId: string, socket: Socket, playerId: string, room: Room) => void) {
+        this.registerMoveCallback = callback;
+    }
+
+    public createRoom(socket: Socket, timeControl: string = "none") {
         const roomId = uuidv4();
         socket.join(roomId);
 
@@ -38,6 +48,7 @@ export class RoomHandler {
             moveHistory: [],
             playerReadyCount: 0,
             capturedPieces: [],
+            timeControl,
         };
 
         this.rooms.set(roomId, room);
@@ -49,6 +60,7 @@ export class RoomHandler {
             room: roomId,
             player_id: player.id,
             message: "Room Created Successfully",
+            timeControl: timeControl,
         });
 
         logger.info(
@@ -230,6 +242,12 @@ export class RoomHandler {
         socket.join(roomId);
         player.socket = socket;
 
+        // Register move handler on new socket
+        const currentRoom = this.rooms.get(roomId);
+        if (currentRoom && this.registerMoveCallback) {
+            this.registerMoveCallback(roomId, socket, playerId, currentRoom);
+        }
+
         const chess = this.getChessInstance(roomId);
 
         if (!chess) {
@@ -273,6 +291,23 @@ export class RoomHandler {
             turn: chess.turn(),
             history: room.moveHistory,
             capturedPieces: room.capturedPieces,
+            timeControl: room.timeControl,
+            timer: this.getTimer(roomId),
+        });
+
+        // Also send full state to the other player so they stay in sync
+        room.players.forEach((p) => {
+            if (p.id !== playerId) {
+                p.socket.emit("reconnected-game", {
+                    board: chess.fen(),
+                    color: p.color,
+                    turn: chess.turn(),
+                    history: room.moveHistory,
+                    capturedPieces: room.capturedPieces,
+                    timeControl: room.timeControl,
+                    timer: this.getTimer(roomId),
+                });
+            }
         });
     }
 
@@ -312,5 +347,12 @@ export class RoomHandler {
         if (this.removeGame) {
             this.removeGame(roomId);
         }
+    }
+
+    public getTimer(roomId: string): { white: number; black: number } | null {
+        if (this.getTimerFn) {
+            return this.getTimerFn(roomId);
+        }
+        return null;
     }
 }

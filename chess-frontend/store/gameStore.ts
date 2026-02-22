@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { Chess, Square } from "chess.js";
 import { Piece } from "@/components/game/square";
 import { useAuthStore } from "./useAuthStore";
-import { game_ended, game_started, invalid_chance, invalid_move, move_played, player_disconnect, player_reconnected, reconnected_game, room_response } from "@/types/game";
+import { game_ended, game_started, invalid_chance, invalid_move, move_played, player_disconnect, player_reconnected, reconnected_game, room_response, timer_update } from "@/types/game";
 import { playCaptureSound, playMoveSound } from "@/lib/sound";
 import { toast } from "sonner";
 
@@ -27,11 +27,12 @@ interface GameState {
     makeMove: (from: string, to: string, promotion?: string) => boolean;
 
     joinRoom: (roomId: string) => void;
-    createRoom: () => void;
+    createRoom: (timeControl?: string) => void;
 
     roomId: string | null;
     playerId: string | null;
-    gameStatus: "waiting" | "playing" | "checkmate" | "draw" | "check";
+    gameStatus: "waiting" | "playing" | "checkmate" | "draw" | "check" | "timeout" | "resigned" | "disconnected";
+    gameEndReason: string | null;
 
     initializeGameListeners: () => void;
     cleanUpListeners: () => void;
@@ -50,6 +51,11 @@ interface GameState {
     setShowDisconnectTimer: (show: boolean) => void;
     disconnectPlayer: "White" | "Black" | null;
 
+    timeControl: string;
+    timer: { white: number; black: number } | null;
+    setTimeControl: (timeControl: string) => void;
+    setTimer: (timer: { white: number; black: number }) => void;
+
     resetGame: () => void;
 }
 
@@ -67,12 +73,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     playerColor: "White" as const,
     currentTurn: null,
     gameStatus: "waiting" as const,
+    gameEndReason: null,
     checkSquare: null,
     promotionData: null,
     showPromotionModal: false,
     roomError: null,
     showDisconnectTimer: false,
     disconnectPlayer: null,
+    timeControl: "none",
+    timer: null,
 
     resetGame: () => {
         set({
@@ -87,20 +96,23 @@ export const useGameStore = create<GameState>((set, get) => ({
             playerColor: "White",
             currentTurn: null,
             gameStatus: "waiting",
+            gameEndReason: null,
             checkSquare: null,
             promotionData: null,
             showPromotionModal: false,
             roomError: null,
             showDisconnectTimer: false,
             disconnectPlayer: null,
+            timeControl: "none",
+            timer: null,
         });
     },
 
 
-    createRoom: () => {
+    createRoom: (timeControl: string = "none") => {
         const socket = useAuthStore.getState().socket;
         if (socket === null) return;
-        socket.emit("create-room");
+        socket.emit("create-room", { timeControl });
     },
 
     joinRoom: (roomId: string) => {
@@ -121,7 +133,11 @@ export const useGameStore = create<GameState>((set, get) => ({
 
         socket.on("room-created", (data: room_response) => {
             console.log("ROOM CREATED RESPONSE");
-            set({ roomId: data.room, playerId: data.player_id })
+            set({ 
+                roomId: data.room, 
+                playerId: data.player_id,
+                timeControl: data.timeControl || "none",
+            })
             localStorage.setItem("playerId", data.player_id);
             localStorage.setItem("roomId", data.room);
             console.log(data.message);
@@ -146,8 +162,10 @@ export const useGameStore = create<GameState>((set, get) => ({
                 currentTurn: data.playertoMove as "w" | "b",
                 gameStatus: "playing",
                 history: chess.history(),
+                timeControl: data.timeControl,
+                timer: data.timer || null,
             })
-            console.log("Game started : You are : ", data.color);
+            console.log("Game started : You are : ", data.color, "Time control:", data.timeControl);
         });
 
         socket.on("move-played", (data: move_played) => {
@@ -256,7 +274,9 @@ export const useGameStore = create<GameState>((set, get) => ({
                 currentTurn: data.turn as "w" | "b",
                 history: data.history.map(s => s.san),
                 gameStatus: restoredChess.isCheck() ? "check" : "playing",
-                capturedPieces: data.capturedPieces as Piece[]
+                capturedPieces: data.capturedPieces as Piece[],
+                timeControl: data.timeControl || "none",
+                timer: data.timer || null,
             });
             console.log("♻ Successfully restored game state.");
         });
@@ -280,12 +300,22 @@ export const useGameStore = create<GameState>((set, get) => ({
 
         socket.on("game-ended", (data: game_ended) => {
             toast.error(data.message);
+            
+            const status = data.reason === "timeout" ? "timeout" : 
+                           data.reason === "resigned" ? "resigned" : 
+                           data.reason === "opponent-disconnected" ? "disconnected" : "checkmate";
+            
             set({
-                gameStatus: "checkmate", //Here game ends in a forfiet
+                gameStatus: status,
+                gameEndReason: data.reason,
                 showDisconnectTimer: false,
                 disconnectPlayer: null,
             })
-        })
+        });
+
+        socket.on("timer-update", (data: timer_update) => {
+            set({ timer: data });
+        });
     },
 
     setShowPromotionModal: (show) => set({
@@ -308,6 +338,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         socket.off("player-disconnected");
         socket.off("player-reconnected");
         socket.off("game-ended");
+        socket.off("timer-update");
     },
 
     setBoard: () => {
@@ -430,6 +461,14 @@ export const useGameStore = create<GameState>((set, get) => ({
         set({
             showDisconnectTimer: show
         })
+    },
+
+    setTimeControl: (timeControl) => {
+        set({ timeControl });
+    },
+
+    setTimer: (timer) => {
+        set({ timer });
     },
 
 }));

@@ -14,6 +14,7 @@ export interface Room {
     capturedPieces: string[];
     disconnectTimer?: NodeJS.Timeout;
     disconnectedPlayerId?: string;
+    timeControl: string;
 }
 
 export interface Timer{
