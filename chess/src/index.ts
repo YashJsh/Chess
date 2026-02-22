@@ -40,7 +40,6 @@ app.get("/health", (_req, res) => {
 
 
 
-
 const io = new Server(httpServer, {
     cors: {
         origin:
@@ -64,8 +63,6 @@ httpServer.listen(PORT, () => {
     );
 });
 
-// Centralised graceful-shutdown handler to ensure the HTTP server
-// is closed cleanly in production deployments (e.g. Kubernetes).
 const shutdown = () => {
     logger.info("Shutting down server...");
 

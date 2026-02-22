@@ -43,8 +43,6 @@ httpServer.listen(PORT, () => {
         env: process.env.NODE_ENV,
     }, "Server configuration loaded");
 });
-// Centralised graceful-shutdown handler to ensure the HTTP server
-// is closed cleanly in production deployments (e.g. Kubernetes).
 const shutdown = () => {
     logger.info("Shutting down server...");
     httpServer.close(() => {

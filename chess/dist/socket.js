@@ -1,29 +1,19 @@
-import { GameManager } from "./game.js";
-import { logger } from "./lib/logger.js";
-const game = new GameManager();
+import { RoomHandler } from "./handlers/room.js";
+import { GameHandler } from "./handlers/game.js";
+import { initRoomEvents } from "./events/room.js";
+const roomHandler = new RoomHandler();
+const gameHandler = new GameHandler();
+roomHandler.setGameStartCallback((roomId) => {
+    const room = roomHandler.getRoom(roomId);
+    if (room) {
+        gameHandler.startGame(roomId, room);
+    }
+});
+gameHandler.setRoomGetter((roomId) => roomHandler.getRoom(roomId));
+gameHandler.setEndGameCallback((roomId) => roomHandler.endGame(roomId));
+roomHandler.setChessInstanceGetter((roomId) => gameHandler.getChess(roomId));
+roomHandler.setGameRemover((roomId) => gameHandler.removeGame(roomId));
 export const init = (io) => {
-    io.on("connection", (socket) => {
-        socket.on("create-room", () => {
-            game.createRoom(socket);
-        });
-        socket.on("join-room", ({ roomId }) => {
-            game.joinRoom(socket, roomId);
-        });
-        socket.on("player-ready", ({ playerId }) => {
-            game.playerReady(socket, playerId);
-        });
-        socket.on("reconnect-game", ({ roomId, playerId }) => {
-            game.reconnectPlayer(socket, roomId, playerId);
-        });
-        socket.on("disconnect", () => {
-            const playerId = socket.data.playerId;
-            if (!playerId) {
-                logger.warn({ socketId: socket.id }, "Disconnect before playerId assigned");
-                return;
-            }
-            logger.info({ playerId, socketId: socket.id }, "Player disconnected");
-            game.handleDisconnect(socket, playerId);
-        });
-    });
+    initRoomEvents(io, roomHandler, gameHandler);
 };
 //# sourceMappingURL=socket.js.map
