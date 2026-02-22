@@ -3,10 +3,26 @@ import { Chess, type Square } from "chess.js";
 import type { Room } from "../types/index.js";
 import { logger } from "../lib/logger.js";
 
+interface GameTimer {
+    white: number;
+    black: number;
+    isRunning: boolean;
+}
+
+const TIME_CONTROL_MAP: Record<string, number> = {
+    "3": 180,
+    "5": 300,
+    "10": 600,
+    "none": 0,
+};
+
 export class GameHandler {
     private readonly games: Map<string, Chess> = new Map();
+    private readonly timers: Map<string, GameTimer> = new Map();
+    private readonly timerIntervals: Map<string, NodeJS.Timeout> = new Map();
     private getRoom: ((roomId: string) => Room | undefined) | null = null;
     private endGame: ((roomId: string) => void) | null = null;
+    private onTimerEnd: ((roomId: string, winner: "White" | "Black") => void) | null = null;
 
     public setRoomGetter(callback: (roomId: string) => Room | undefined) {
         this.getRoom = callback;
@@ -16,9 +32,104 @@ export class GameHandler {
         this.endGame = callback;
     }
 
+    public setTimerEndCallback(callback: (roomId: string, winner: "White" | "Black") => void) {
+        this.onTimerEnd = callback;
+    }
+
+    private initializeTimer(roomId: string, timeControl: string) {
+        const initialTime = TIME_CONTROL_MAP[timeControl] ?? 0;
+
+        const timer: GameTimer = {
+            white: initialTime,
+            black: initialTime,
+            isRunning: false,
+        };
+
+        this.timers.set(roomId, timer);
+        logger.info({ roomId, timeControl, initialTime }, "Timer initialized");
+    }
+
+    private startTimer(roomId: string) {
+        const timer = this.timers.get(roomId);
+        if (!timer || timer.white === 0 && timer.black === 0) return;
+
+        timer.isRunning = true;
+
+        const interval = setInterval(() => {
+            const currentTimer = this.timers.get(roomId);
+            if (!currentTimer || !currentTimer.isRunning) {
+                clearInterval(interval);
+                return;
+            }
+
+            const room = this.getRoom ? this.getRoom(roomId) : undefined;
+            if (!room || room.players.length < 2) {
+                clearInterval(interval);
+                return;
+            }
+
+            const chess = this.games.get(roomId);
+            if (!chess) {
+                clearInterval(interval);
+                return;
+            }
+
+            const turn = chess.turn();
+            if (turn === "w") {
+                currentTimer.white -= 1;
+            } else {
+                currentTimer.black -= 1;
+            }
+
+            room.players.forEach((p) => {
+                p.socket.emit("timer-update", {
+                    white: currentTimer.white,
+                    black: currentTimer.black,
+                });
+            });
+
+            if (currentTimer.white <= 0 || currentTimer.black <= 0) {
+                clearInterval(interval);
+                currentTimer.isRunning = false;
+                const winner = currentTimer.white <= 0 ? "Black" : "White";
+                logger.info({ roomId, winner, reason: "timeout" }, "Game ended by timeout");
+                
+                room.players.forEach((p) => {
+                    p.socket.emit("game-ended", {
+                        winner,
+                        reason: "timeout",
+                        message: "Time run out!",
+                    });
+                });
+
+                if (this.onTimerEnd) {
+                    this.onTimerEnd(roomId, winner);
+                }
+            }
+        }, 1000);
+
+        this.timerIntervals.set(roomId, interval);
+        this.timers.set(roomId, timer);
+    }
+
+    private stopTimer(roomId: string) {
+        const interval = this.timerIntervals.get(roomId);
+        if (interval) {
+            clearInterval(interval);
+            this.timerIntervals.delete(roomId);
+        }
+        
+        const timer = this.timers.get(roomId);
+        if (timer) {
+            timer.isRunning = false;
+        }
+    }
+
     public startGame(roomId: string, room: Room) {
         const chess = new Chess();
         this.games.set(roomId, chess);
+
+        this.initializeTimer(roomId, room.timeControl);
 
         room.players.forEach((p) => {
             p.socket.emit("game-started", {
@@ -26,11 +137,17 @@ export class GameHandler {
                 board: chess.fen(),
                 message: "game is started",
                 playertoMove: chess.turn(),
+                timeControl: room.timeControl,
+                timer: this.timers.get(roomId),
             });
 
             this.registerMove(roomId, p.socket, p.id, room);
         });
-        logger.info({ roomId }, "Game started");
+        logger.info({ roomId, timeControl: room.timeControl }, "Game started");
+    }
+
+    public registerMoveForPlayer(roomId: string, socket: Socket, playerId: string, room: Room) {
+        this.registerMove(roomId, socket, playerId, room);
     }
 
     private registerMove(roomId: string, socket: Socket, playerId: string, room: Room) {
@@ -140,6 +257,9 @@ export class GameHandler {
                         "Move applied"
                     );
 
+                    this.stopTimer(roomId);
+                    this.startTimer(roomId);
+
                     if (this.isCheck(roomId, chess)) {
                         socket.to(roomId).emit("check", {
                             message: "Check",
@@ -177,6 +297,8 @@ export class GameHandler {
         const room = this.getRoom ? this.getRoom(roomId) : undefined;
 
         if (gameChess?.isGameOver()) {
+            this.stopTimer(roomId);
+
             if (gameChess.isCheckmate()) {
                 const winner = gameChess.turn() === "w" ? "Black" : "White";
 
@@ -217,7 +339,15 @@ export class GameHandler {
         return this.games.get(roomId);
     }
 
+    public getTimer(roomId: string): { white: number; black: number } | null {
+        const timer = this.timers.get(roomId);
+        if (!timer) return null;
+        return { white: timer.white, black: timer.black };
+    }
+
     public removeGame(roomId: string) {
+        this.stopTimer(roomId);
+        this.timers.delete(roomId);
         this.games.delete(roomId);
     }
 }

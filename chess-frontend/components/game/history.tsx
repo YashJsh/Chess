@@ -3,7 +3,6 @@ import { useGameStore } from "@/store/gameStore"
 export const Moves = ()=>{
     const { history } = useGameStore();
     const moves = [];
-    console.log(history);
     for (let i = 0;  i < history.length; i+=2){
         moves.push({
             moveNumber : Math.floor(i/2) + 1,

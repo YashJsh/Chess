@@ -1,7 +1,8 @@
 export interface room_response{
     room : string, 
     player_id : string, 
-    message : string
+    message : string,
+    timeControl?: string;
 }
 
 export interface game_started {
@@ -9,7 +10,14 @@ export interface game_started {
     board : string;
     message : string;
     playertoMove : string;
+    timeControl: string;
+    timer?: { white: number; black: number };
 };
+
+export interface timer_update {
+    white: number;
+    black: number;
+}
 
 export interface move_played{
     board: string;
@@ -37,10 +45,12 @@ export interface reconnected_game{
     turn: string,
     history: {
         san : string,
-        fen : string,
-        by : string
+        fen: string,
+        by: string
     }[],
-    capturedPieces : string[]
+    capturedPieces : string[],
+    timeControl: string;
+    timer?: { white: number; black: number };
 }
 
 export interface player_disconnect{

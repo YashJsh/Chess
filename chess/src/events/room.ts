@@ -5,8 +5,8 @@ import { logger } from "../lib/logger.js";
 
 export const initRoomEvents = (io: Server, roomHandler: RoomHandler, gameHandler: GameHandler) => {
     io.on("connection", (socket) => {
-        socket.on("create-room", () => {
-            roomHandler.createRoom(socket);
+        socket.on("create-room", ({ timeControl }: { timeControl?: string } = {}) => {
+            roomHandler.createRoom(socket, timeControl || "none");
         });
 
         socket.on("join-room", ({ roomId }: { roomId: string }) => {
