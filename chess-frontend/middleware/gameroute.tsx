@@ -33,7 +33,7 @@ export function GameRouteGuard({ children }: { children: React.ReactNode }) {
 
         //For fresh game : 
         if (!savedPlayerId || !savedRoomId){
-            setIsValid(true);
+            setIsValid(false);
             setIsValidating(false);
             return;
         }

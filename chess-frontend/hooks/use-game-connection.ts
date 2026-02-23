@@ -9,7 +9,7 @@ export const useGameConnect = () => {
     const { socket, isSocketConnected } = useAuthStore();
     const [listenersReady, setListeners] = useState(false);
 
-
+    //This is for initializing the listeners.
     useEffect(() => {
         console.log("Initializing Game Listeners");
         console.log("Socket ID is : ", socket?.id)
@@ -22,6 +22,7 @@ export const useGameConnect = () => {
         }
     }, [socket]);
 
+    //This if for sending the event that player is ready.
     useEffect(() => {
         if (!socket) return;
         if (!roomId) return;
@@ -32,6 +33,8 @@ export const useGameConnect = () => {
         socket.emit("player-ready", {playerId : savedPlayer});
     }, [socket, roomId, listenersReady]);
 
+
+    //For reconnection
     useEffect(() => {
         if (!socket || !isSocketConnected) return;
     

@@ -7,6 +7,7 @@ import Image from "next/image";
 export const Captured = () => {
     const { capturedPieces  } = useGameStore();
 
+    //Get the captured pieces accordingly, uppercase pieces are white and lower case pieces are black.
     const whiteCaptured = capturedPieces.filter((p): p is Exclude<Piece, ""> => 
         p !== "" && p === p.toUpperCase()
     );

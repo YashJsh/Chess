@@ -24,20 +24,24 @@ export class GameHandler {
     private endGame: ((roomId: string) => void) | null = null;
     private onTimerEnd: ((roomId: string, winner: "White" | "Black") => void) | null = null;
 
+    //Helper callback fn : This is for getting room details from the room class.
     public setRoomGetter(callback: (roomId: string) => Room | undefined) {
         this.getRoom = callback;
     }
 
+    //Helper fn : Called when game ends.
     public setEndGameCallback(callback: (roomId: string) => void) {
         this.endGame = callback;
     }
 
+    //end timer.
     public setTimerEndCallback(callback: (roomId: string, winner: "White" | "Black") => void) {
         this.onTimerEnd = callback;
     }
 
     private initializeTimer(roomId: string, timeControl: string) {
         const initialTime = TIME_CONTROL_MAP[timeControl] ?? 0;
+        //If not timer is choosen for the game, then 0 as default.
 
         const timer: GameTimer = {
             white: initialTime,
@@ -49,12 +53,17 @@ export class GameHandler {
         logger.info({ roomId, timeControl, initialTime }, "Timer initialized");
     }
 
+    
     private startTimer(roomId: string) {
+        //Get the timer from the timer map.
         const timer = this.timers.get(roomId);
         if (!timer || timer.white === 0 && timer.black === 0) return;
 
         timer.isRunning = true;
+        //Start the timer.
 
+
+        //The below fn : runs every second, and checks for turn, updates time. and much more.
         const interval = setInterval(() => {
             const currentTimer = this.timers.get(roomId);
             if (!currentTimer || !currentTimer.isRunning) {
@@ -88,6 +97,7 @@ export class GameHandler {
                 });
             });
 
+            //Check if anyone of these, has. no time game stops.
             if (currentTimer.white <= 0 || currentTimer.black <= 0) {
                 clearInterval(interval);
                 currentTimer.isRunning = false;
@@ -125,6 +135,7 @@ export class GameHandler {
         }
     }
 
+    //When both players are ready, this function get's called.
     public startGame(roomId: string, room: Room) {
         const chess = new Chess();
         this.games.set(roomId, chess);
@@ -146,6 +157,7 @@ export class GameHandler {
         logger.info({ roomId, timeControl: room.timeControl }, "Game started");
     }
 
+    //This is a function used for reconnecting of player. 
     public registerMoveForPlayer(roomId: string, socket: Socket, playerId: string, room: Room) {
         this.registerMove(roomId, socket, playerId, room);
     }
@@ -161,6 +173,8 @@ export class GameHandler {
                     "Move received",
                 );
 
+                //Check is there a game present.
+                // If not return ; 
                 if (!chess || !this.getRoom) {
                     socket.emit("game-not-started", {
                         players: room?.players.length,
@@ -169,20 +183,23 @@ export class GameHandler {
                     return;
                 }
 
+                //Get the current room
                 const currentRoom = this.getRoom(roomId);
                 if (!currentRoom) {
                     logger.warn({ roomId }, "Room not found");
                     return;
                 }
 
+                //Find the player
                 const player = currentRoom.players.find((p) => p.id === playerId);
                 if (!player) {
                     logger.warn({ playerId, roomId }, "Player not in this room");
                     return;
                 }
 
+                //Check for turn. here are we checking turn with chess.js library, finding whose turn is it and then matching with the player turn stored in our map.
                 const turn = chess.turn() === "w" ? "White" : "Black";
-                if (turn != player.color) {
+                if (turn != player.color) { 
                     logger.warn(
                         { roomId, playerId, expectedTurn: turn },
                         "Player tried to move out of turn"
@@ -195,6 +212,8 @@ export class GameHandler {
                 }
 
                 try {
+                    //check which piece is getting captured.
+                    //Findt the piece
                     const capturedPiece = chess.get(to as Square);
                     const piece = chess.get(from as Square);
                     const needPromotion =
@@ -202,6 +221,7 @@ export class GameHandler {
                         ((piece.color === "w" && to[1] === "8") ||
                             (piece.color === "b" && to[1] === "1"));
 
+                    //If pawn is present in the last row than promotion needed.
                     if (needPromotion && !promotion) {
                         socket.emit(
                             "promotion-required",
@@ -219,15 +239,17 @@ export class GameHandler {
                         moveOptions.promotion = promotion;
                     }
 
+                    //Move from the "from" to "to"
                     const result = chess.move(moveOptions);
                     const san = result.san;
-
+                    //It will store the "to" place where the from is moved. And we are then storing it into the move history.
                     currentRoom.moveHistory?.push({
                         san,
                         fen: chess.fen(),
                         by: player.color,
                     });
 
+                    //If there is a captured piece, so add in the captured pieces map.
                     if (capturedPiece) {
                         const pieceNotation =
                             capturedPiece.color === "w"
@@ -237,6 +259,7 @@ export class GameHandler {
                     }
 
                     currentRoom.players.forEach((p) => {
+                        //Emitting the move, frontend will use this to create and update the state.
                         p.socket.emit("move-played", {
                             board: chess.fen(),
                             lastMove: { from, to },
@@ -256,10 +279,11 @@ export class GameHandler {
                         },
                         "Move applied"
                     );
-
+                    //This will stops the timer for player and restarts for the other 
                     this.stopTimer(roomId);
                     this.startTimer(roomId);
 
+                    //Also check for "check"
                     if (this.isCheck(roomId, chess)) {
                         socket.to(roomId).emit("check", {
                             message: "Check",
@@ -267,6 +291,7 @@ export class GameHandler {
                         logger.info({ roomId }, "Check detected");
                     }
 
+                    //Checking for draw.
                     if (this.isDraw(roomId, chess)) {
                         socket.to(roomId).emit("draw", {
                             message: "Match draw",
@@ -292,6 +317,7 @@ export class GameHandler {
         );
     }
 
+    //Checking for checkmate and insufficient material.
     public gameState(roomId: string, socket: Socket, chess?: Chess) {
         const gameChess = chess || this.games.get(roomId);
         const room = this.getRoom ? this.getRoom(roomId) : undefined;
@@ -325,6 +351,8 @@ export class GameHandler {
         }
     }
 
+
+    //Helper function for checking.
     public isCheck(roomId: string, chess?: Chess): boolean {
         const gameChess = chess || this.games.get(roomId);
         return gameChess?.isCheck() ?? false;

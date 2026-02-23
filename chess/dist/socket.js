@@ -21,6 +21,6 @@ roomHandler.setRegisterMoveCallback((roomId, socket, playerId, room) => {
     gameHandler.registerMoveForPlayer(roomId, socket, playerId, room);
 });
 export const init = (io) => {
-    initRoomEvents(io, roomHandler, gameHandler);
+    initRoomEvents(io, roomHandler);
 };
 //# sourceMappingURL=socket.js.map

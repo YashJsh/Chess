@@ -1,9 +1,10 @@
 import type { Server } from "socket.io";
-import { RoomHandler } from "../handlers/room.js";
-import { GameHandler } from "../handlers/game.js";
 import { logger } from "../lib/logger.js";
 
-export const initRoomEvents = (io: Server, roomHandler: RoomHandler, gameHandler: GameHandler) => {
+import { RoomHandler } from "../handlers/room.js";
+
+//This is from where the socket events start.
+export const initRoomEvents = (io: Server, roomHandler: RoomHandler) => {
     io.on("connection", (socket) => {
         socket.on("create-room", ({ timeControl }: { timeControl?: string } = {}) => {
             roomHandler.createRoom(socket, timeControl || "none");

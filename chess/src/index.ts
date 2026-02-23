@@ -1,11 +1,11 @@
 import { Server } from "socket.io";
 import express, { urlencoded } from "express";
 import { createServer } from "http";
-import { init } from "./socket.js";
 import dotenv from "dotenv";
-import { logger } from "./lib/logger.js";
 import cors from "cors";
 
+import { logger } from "./lib/logger.js";
+import { init } from "./socket.js";
 
 dotenv.config();
 
@@ -25,10 +25,9 @@ app.use(
       credentials: true,
     })
   );
-app.use(urlencoded({ extended: true }));
-app.use(express.static("public"));
 
-// Lightweight health-check endpoint for uptime checks and load balancers.
+
+// Lightweight health-check endpoint for uptime checks.
 app.get("/health", (_req, res) => {
     res.status(200).json({
         status: "ok",
@@ -37,8 +36,6 @@ app.get("/health", (_req, res) => {
         service: "chess-game-server",
     });
 });
-
-
 
 const io = new Server(httpServer, {
     cors: {
@@ -65,19 +62,10 @@ httpServer.listen(PORT, () => {
 
 const shutdown = () => {
     logger.info("Shutting down server...");
-
     httpServer.close(() => {
         logger.info("HTTP server closed");
         process.exit(0);
     });
 };
 
-process.on("SIGTERM", shutdown);
-process.on("SIGINT", shutdown);
-process.on("unhandledRejection", (reason) => {
-    logger.error({ reason }, "Unhandled promise rejection");
-});
-process.on("uncaughtException", (err) => {
-    logger.error({ err }, "Uncaught exception");
-    process.exit(1);
-});
+

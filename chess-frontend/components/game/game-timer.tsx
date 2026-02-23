@@ -9,7 +9,7 @@ const formatTime = (seconds: number): string => {
 }
 
 export const GameTimer = () => {
-    const { timer, timeControl, playerColor, currentTurn } = useGameStore();
+    const { timer, timeControl, currentTurn } = useGameStore();
 
     if (timeControl === "none" || !timer) {
         return null;

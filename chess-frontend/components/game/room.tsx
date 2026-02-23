@@ -22,7 +22,6 @@ import { useAuthStore } from "@/store/useAuthStore"
 
 
 export const Room = ({ roomType, description }: { roomType: string, description: string }) => {
-    const router = useRouter();
     const [roomIds, setRoomId] = useState("");
     const { createRoom, joinRoom, roomId, timeControl, setTimeControl } = useGameStore();
     const [showWaitingModal, setShowWaitingModal] = useState(false);

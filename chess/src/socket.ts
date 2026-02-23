@@ -3,7 +3,6 @@ import { RoomHandler } from "./handlers/room.js";
 import { GameHandler } from "./handlers/game.js";
 import { initRoomEvents } from "./events/room.js";
 
-
 const roomHandler = new RoomHandler();
 const gameHandler = new GameHandler();
 
@@ -28,5 +27,5 @@ roomHandler.setRegisterMoveCallback((roomId, socket, playerId, room) => {
 });
 
 export const init = (io: Server) => {
-    initRoomEvents(io, roomHandler, gameHandler);
+    initRoomEvents(io, roomHandler);
 };

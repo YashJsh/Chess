@@ -6,7 +6,6 @@ import { Square } from "chess.js"
 import { useGameStore } from "@/store/gameStore";
 import { PromotionModal } from "./promotion";
 
-
 export const ChessBoard = () => {
     const { 
         chess, 
@@ -50,6 +49,7 @@ export const ChessBoard = () => {
         console.log("Handle square click");
         console.log("Selected is : ", selected);
 
+        //If already selected : fetch the legal moves.
         if (!selected) {
             setSelected(square);
             const moves = chess.moves({ square, verbose: true });
@@ -57,6 +57,7 @@ export const ChessBoard = () => {
             return;
         }
 
+        // If same square. reset the selected square.
         if (isSameSquare) {
             resetSelected();
             setLegalMoves([]);
@@ -66,6 +67,7 @@ export const ChessBoard = () => {
         const sqObj = chess.get(square);
         const selectedObj = chess.get(selected as Square);
 
+        //If the square is selected of same color again, fetch moves for that.
         if (sqObj && selectedObj && sqObj.color === selectedObj.color) {
             setSelected(square);
             const moves = chess.moves({ square, verbose: true });
@@ -114,7 +116,6 @@ export const ChessBoard = () => {
                                             
                                             const squareName = sqToNum(actualRowIndex, actualColIndex);
                                             const isLegal = legalMoves.includes(squareName);
-                                            const isSelectedSquare = selected === squareName;
                                             const isCheckSquare = squareName === checkSquare;
                                             return (
                                                 <div key={`${actualRowIndex}-${actualColIndex}`} className="relative w-[12.5%] h-full">

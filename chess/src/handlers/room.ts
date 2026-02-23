@@ -5,7 +5,8 @@ import { logger } from "../lib/logger.js";
 
 export class RoomHandler {
     private readonly rooms: Map<string, Room> = new Map();
-    private readonly disconnectTimeoutMs = 15000;
+    private readonly disconnectTimeoutMs = 15000; //By default 15 seconds.
+    //Callback for starting the game.
     private onGameStart: ((roomId: string) => void) | null = null;
     private getChessInstanceFn: ((roomId: string) => any) | null = null;
     private removeGame: ((roomId: string) => void) | null = null;
@@ -32,6 +33,7 @@ export class RoomHandler {
         this.registerMoveCallback = callback;
     }
 
+    //Create room
     public createRoom(socket: Socket, timeControl: string = "none") {
         const roomId = uuidv4();
         socket.join(roomId);
@@ -41,7 +43,7 @@ export class RoomHandler {
             socket,
             color: "White",
         };
-
+        //Adding the player to the room.
         const room: Room = {
             id: roomId,
             players: [player],
@@ -75,6 +77,7 @@ export class RoomHandler {
             "Player attempting to join room",
         );
 
+        //Check if room exists;
         if (!this.rooms.has(roomId)) {
             socket.emit("error-room", {
                 code: "ROOM_NOT_FOUND",
@@ -117,6 +120,9 @@ export class RoomHandler {
         );
     }
 
+
+    //After joining or creating, each player sends i am ready flag. Which the increments player ready count.
+    //If both players are ready, then game starts.
     public playerReady(socket: Socket, playerId: string) {
         const room = Array.from(this.rooms.values()).find((r) =>
             r.players.some((p) => p.id === playerId),
@@ -165,7 +171,7 @@ export class RoomHandler {
                     { roomId, playerId },
                     "Player disconnected, starting timeout",
                 );
-
+                //This gets the current running chess instance.
                 const chess = this.getChessInstance(roomId);
                 if (!chess || room.players.length < 2) {
                     logger.warn({ roomId, playerId }, "Game not started");
@@ -186,6 +192,7 @@ export class RoomHandler {
                     clearTimeout(room.disconnectTimer);
                 }
 
+                
                 room.disconnectedPlayerId = playerId;
                 room.disconnectTimer = setTimeout(() => {
                     this.handleDisconnectTimeout(roomId, playerId);
@@ -194,6 +201,7 @@ export class RoomHandler {
         }
     }
 
+    //Dissconnect function : If player doensn't come back before 15 seconds.
     private handleDisconnectTimeout(roomId: string, playerId: string) {
         const room = this.rooms.get(roomId);
         if (!room) return;
@@ -219,6 +227,7 @@ export class RoomHandler {
         this.endGame(roomId);
     }
 
+    //If player comes back, we have to reconnect the player.
     public reconnectPlayer(socket: Socket, roomId: string, playerId: string) {
         logger.info(
             { roomId, playerId },
@@ -240,9 +249,10 @@ export class RoomHandler {
         }
 
         socket.join(roomId);
+        //Add the new socket to the player
         player.socket = socket;
 
-        // Register move handler on new socket
+        // Registering the move handler again for the new socket.
         const currentRoom = this.rooms.get(roomId);
         if (currentRoom && this.registerMoveCallback) {
             this.registerMoveCallback(roomId, socket, playerId, currentRoom);
@@ -285,6 +295,7 @@ export class RoomHandler {
             });
         }
 
+        //Game reconnected.
         socket.emit("reconnected-game", {
             board: chess.fen(),
             color: player.color,
@@ -311,6 +322,7 @@ export class RoomHandler {
         });
     }
 
+    //End game: This function cleansup game and room.
     public endGame(roomId: string) {
         logger.info({ roomId }, "Cleaning up game and room");
         const room = this.rooms.get(roomId);

@@ -121,6 +121,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         socket.emit("join-room", { roomId });
     },
 
+
+    //Game listeners for transfer of socket data.
     initializeGameListeners: () => {
         const socket = useAuthStore.getState().socket;
 
@@ -131,6 +133,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
         console.log("✅ Initializing game listeners on socket:", socket.id);
 
+        //Creating room 
         socket.on("room-created", (data: room_response) => {
             console.log("ROOM CREATED RESPONSE");
             set({ 
@@ -143,6 +146,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             console.log(data.message);
         });
 
+        //Room joined
         socket.on("room-joined", (data: room_response) => {
             set({ roomId: data.room, playerId: data.player_id });
             localStorage.setItem("playerId", data.player_id);
@@ -168,11 +172,14 @@ export const useGameStore = create<GameState>((set, get) => ({
             console.log("Game started : You are : ", data.color, "Time control:", data.timeControl);
         });
 
+
+        //Played a move;
         socket.on("move-played", (data: move_played) => {
             const newChess = new Chess(data.board);
 
             let checksq = get().checkSquare;
 
+            //Checking first, is the king is in check.
             if (newChess.isCheck()) {
                 const turn = data.turn;
                 const kingPos = newChess.board().flat().find((sq) => {
@@ -352,6 +359,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         const playerColor = get().playerColor;
         const currentTurn = get().currentTurn;
 
+        //If no turn then return;
         const isPlayerTrun = (playerColor === "White" && currentTurn == "w") || (playerColor === "Black" && currentTurn === "b")
 
         if (!isPlayerTrun) {
@@ -365,7 +373,8 @@ export const useGameStore = create<GameState>((set, get) => ({
             if (piece &&
                 ((playerColor === "White" && piece.color === "w") ||
                     (playerColor === "Black" && piece.color === "b"))
-            ) {
+            ) { 
+                //This function returns what moves a piece can play.
                 const moves = chess.moves({ square: sq as Square });
                 set({
                     selected: sq,
@@ -388,8 +397,6 @@ export const useGameStore = create<GameState>((set, get) => ({
         set({ legalMoves: moves });
     },
 
-
-
     setPromotionData: (data) => {
         set({ promotionData: data })
     },
@@ -403,6 +410,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (!promotionData) {
             return;
         }
+        //Sending data with the piece user choose. 
         get().makeMove(promotionData.from, promotionData.to, piece);
         set({
             promotionData: null,
@@ -420,6 +428,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
         try {
             console.log("Player color ", playerColor);
+            //If not player turn return;
             const isPlayerTurn =
                 (playerColor === "White" && currentTurn === "w") ||
                 (playerColor === "Black" && currentTurn === "b");
@@ -435,6 +444,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
             socket.emit("move", { from, to, promotion });
 
+            //Creating a temporary board here to show user quickly.
             const optimistic_board = new Chess(chess.fen());
             optimistic_board.move({ from, to });
 
