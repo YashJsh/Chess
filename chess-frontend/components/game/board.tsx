@@ -46,9 +46,6 @@ export const ChessBoard = () => {
         const square = sqToNum(row, col) as Square;
         const isSameSquare = selected === square;
 
-        console.log("Handle square click");
-        console.log("Selected is : ", selected);
-
         //If already selected : fetch the legal moves.
         if (!selected) {
             setSelected(square);

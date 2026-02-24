@@ -363,7 +363,6 @@ export const useGameStore = create<GameState>((set, get) => ({
         const isPlayerTrun = (playerColor === "White" && currentTurn == "w") || (playerColor === "Black" && currentTurn === "b")
 
         if (!isPlayerTrun) {
-            console.log("Not your turn");
             return;
         }
 

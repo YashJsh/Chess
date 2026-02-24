@@ -171,7 +171,7 @@ export class RoomHandler {
                     { roomId, playerId },
                     "Player disconnected, starting timeout",
                 );
-                //This gets the current running chess instance.
+                //This gets the current running chess instance. // To check if game started or not.
                 const chess = this.getChessInstance(roomId);
                 if (!chess || room.players.length < 2) {
                     logger.warn({ roomId, playerId }, "Game not started");
