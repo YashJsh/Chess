@@ -205,7 +205,6 @@ export class GameHandler {
                         "Player tried to move out of turn"
                     );
                     socket.emit("invalid-chance", {
-                        message: "It is not your chance to move",
                         turn: chess.turn()
                     });
                     return;
